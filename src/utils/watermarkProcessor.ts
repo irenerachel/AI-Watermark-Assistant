@@ -64,22 +64,27 @@ export class WatermarkProcessor {
           this.ctx.drawImage(img, 0, 0, width, height);
 
           // 添加水印（传入scale，默认1）
-          this.addWatermark(watermarkConfig, width, height, outputConfig.scale || 1);
-
-          // 导出图片
-          this.canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                console.log('图片处理成功，生成blob大小:', blob.size);
-                resolve(blob);
-              } else {
-                console.error('Canvas生成blob失败');
-                reject(new Error('Canvas生成blob失败'));
-              }
-            },
-            'image/jpeg',
-            outputConfig.quality
-          );
+          this.addWatermark(watermarkConfig, width, height, outputConfig.scale || 1)
+            .then(() => {
+              // 导出图片
+              this.canvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    console.log('图片处理成功，生成blob大小:', blob.size);
+                    resolve(blob);
+                  } else {
+                    console.error('Canvas生成blob失败');
+                    reject(new Error('Canvas生成blob失败'));
+                  }
+                },
+                'image/jpeg',
+                outputConfig.quality
+              );
+            })
+            .catch((error) => {
+              console.error('添加水印失败:', error);
+              reject(error);
+            });
         } catch (error) {
           console.error('图片处理过程中出错:', error);
           reject(error);
@@ -127,11 +132,11 @@ export class WatermarkProcessor {
     return { width, height };
   }
 
-  private addWatermark(watermarkConfig: WatermarkConfig, imageWidth: number, imageHeight: number, scale: number = 1) {
+  private async addWatermark(watermarkConfig: WatermarkConfig, imageWidth: number, imageHeight: number, scale: number = 1) {
     if (watermarkConfig.type === 'text') {
       this.addTextWatermark(watermarkConfig, imageWidth, imageHeight, scale);
     } else {
-      this.addImageWatermark(watermarkConfig, imageWidth, imageHeight, scale);
+      await this.addImageWatermark(watermarkConfig, imageWidth, imageHeight, scale);
     }
   }
 
@@ -170,7 +175,7 @@ export class WatermarkProcessor {
     );
 
     // 根据borderStyle绘制不同的效果（按scale缩放padding/边框）
-    const padding = Math.round(7.33 * (scale || 1)); // 6 + 1.33pt (增加1pt的左右边距)
+    const padding = Math.round(9.33 * (scale || 1)); // 6 + 3.33pt (增加更多左右边距，让文字不局促)
     const rectX = x - padding;
     const rectY = y - padding;
     const rectWidth = textWidth + padding * 2;
@@ -226,12 +231,40 @@ export class WatermarkProcessor {
     imageHeight: number,
     scale: number = 1
   ) {
-    if (!watermarkConfig.customImage) return;
+    // 只处理选中的水印图片
+    let selectedFile: File | undefined;
+    
+    if (watermarkConfig.customImages && watermarkConfig.selectedWatermarkIndex !== undefined) {
+      selectedFile = watermarkConfig.customImages[watermarkConfig.selectedWatermarkIndex];
+    } else if (watermarkConfig.customImage) {
+      selectedFile = watermarkConfig.customImage;
+    }
+    
+    if (!selectedFile) {
+      console.log('没有选择图片水印，跳过');
+      return;
+    }
 
+    console.log('开始添加选中的图片水印:', selectedFile.name, 'scale:', scale);
+
+    // 处理选中的水印图片
+    await this.drawSingleImageWatermark(selectedFile, watermarkConfig, imageWidth, imageHeight, scale, 0);
+  }
+
+  private async drawSingleImageWatermark(
+    file: File,
+    watermarkConfig: WatermarkConfig,
+    imageWidth: number,
+    imageHeight: number,
+    scale: number,
+    index: number
+  ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const watermarkImg = new Image();
       watermarkImg.onload = () => {
         try {
+          console.log(`水印图片 ${index + 1} 加载成功，原始尺寸:`, watermarkImg.width, 'x', watermarkImg.height);
+          
           const shortSide = Math.min(imageWidth, imageHeight);
           const maxWatermarkSize = shortSide * 0.15; // 最大15%的短边
 
@@ -245,7 +278,16 @@ export class WatermarkProcessor {
             watermarkHeight *= ratio;
           }
 
-          // 计算水印位置（按scale缩放边距）
+          // 应用用户设置的大小调整
+          const sizeMultiplier = watermarkConfig.watermarkSize || 1.0;
+          watermarkWidth *= sizeMultiplier;
+          watermarkHeight *= sizeMultiplier;
+
+          console.log(`水印 ${index + 1} 最终尺寸:`, watermarkWidth, 'x', watermarkHeight);
+
+          // 计算水印位置（使用预设位置）
+          const offsetX = index * 10;
+          const offsetY = index * 10;
           const { x, y } = this.calculateWatermarkPosition(
             watermarkConfig.position,
             watermarkWidth,
@@ -253,22 +295,33 @@ export class WatermarkProcessor {
             imageWidth,
             imageHeight,
             scale,
-            watermarkConfig.margin || 15
+            watermarkConfig.margin || 15,
+            offsetX,
+            offsetY
           );
 
-          // 绘制水印
-          this.ctx.globalAlpha = (watermarkConfig.backgroundOpacity || 100) / 100;
-          this.ctx.drawImage(watermarkImg, x, y, watermarkWidth, watermarkHeight);
-          this.ctx.globalAlpha = 1;
+          console.log(`水印 ${index + 1} 位置:`, x, y, '位置类型:', watermarkConfig.position);
 
+          // 绘制水印（保持PNG透明背景）
+          this.ctx.globalAlpha = 1; // 保持完全不透明，让PNG的透明部分自然显示
+          this.ctx.drawImage(watermarkImg, x, y, watermarkWidth, watermarkHeight);
+
+          console.log(`图片水印 ${index + 1} 绘制完成`);
           resolve();
         } catch (error) {
+          console.error(`绘制图片水印 ${index + 1} 时出错:`, error);
           reject(error);
         }
       };
 
-      watermarkImg.onerror = () => reject(new Error('水印图片加载失败'));
-      watermarkImg.src = URL.createObjectURL(watermarkConfig.customImage!);
+      watermarkImg.onerror = (error) => {
+        console.error(`水印图片 ${index + 1} 加载失败:`, error);
+        reject(new Error(`水印图片 ${index + 1} 加载失败`));
+      };
+      
+      const objectUrl = URL.createObjectURL(file);
+      console.log(`创建水印图片 ${index + 1} 对象URL:`, objectUrl);
+      watermarkImg.src = objectUrl;
     });
   }
 
@@ -279,28 +332,32 @@ export class WatermarkProcessor {
     imageWidth: number,
     imageHeight: number,
     scale: number = 1,
-    margin: number = 15
+    margin: number = 15,
+    offsetX: number = 0,
+    offsetY: number = 0
   ) {
     const scaledMargin = Math.round(margin * (scale || 1));
+    const scaledOffsetX = Math.round(offsetX * (scale || 1));
+    const scaledOffsetY = Math.round(offsetY * (scale || 1));
     let x = 0;
     let y = 0;
 
     switch (position) {
       case 'top-left':
-        x = scaledMargin;
-        y = scaledMargin;
+        x = scaledMargin + scaledOffsetX;
+        y = scaledMargin + scaledOffsetY;
         break;
       case 'top-right':
-        x = imageWidth - watermarkWidth - scaledMargin;
-        y = scaledMargin;
+        x = imageWidth - watermarkWidth - scaledMargin - scaledOffsetX;
+        y = scaledMargin + scaledOffsetY;
         break;
       case 'bottom-left':
-        x = scaledMargin;
-        y = imageHeight - watermarkHeight - scaledMargin;
+        x = scaledMargin + scaledOffsetX;
+        y = imageHeight - watermarkHeight - scaledMargin - scaledOffsetY;
         break;
       case 'bottom-right':
-        x = imageWidth - watermarkWidth - scaledMargin;
-        y = imageHeight - watermarkHeight - scaledMargin;
+        x = imageWidth - watermarkWidth - scaledMargin - scaledOffsetX;
+        y = imageHeight - watermarkHeight - scaledMargin - scaledOffsetY;
         break;
     }
 

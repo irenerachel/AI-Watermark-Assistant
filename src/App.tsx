@@ -1,13 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Layout, Button, message, Space, Typography, Divider } from 'antd';
-import { PlayCircleOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Layout, Button, message, Typography } from 'antd';
 import ImageUpload from './components/ImageUpload';
-import WatermarkConfig from './components/WatermarkConfig';
-import OutputConfig from './components/OutputConfig';
-import ProcessingProgress from './components/ProcessingProgress';
-import ResultDisplay from './components/ResultDisplay';
-import WatermarkPreview from './components/WatermarkPreview';
-import { ImageFile, WatermarkConfig as WatermarkConfigType, OutputConfig as OutputConfigType, ProcessingProgressData } from './types';
+import { ImageFile, WatermarkConfig as WatermarkConfigType, OutputConfig as OutputConfigType } from './types';
 import { WatermarkProcessor } from './utils/watermarkProcessor';
 
 const { Header, Content } = Layout;
@@ -15,6 +9,7 @@ const { Title, Paragraph } = Typography;
 
 const App: React.FC = () => {
   const [images, setImages] = useState<ImageFile[]>([]);
+
   const [watermarkConfig, setWatermarkConfig] = useState<WatermarkConfigType>({
     type: 'text',
     text: 'AI生成',
@@ -36,20 +31,13 @@ const App: React.FC = () => {
     scale: 1.0,
   });
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState<ProcessingProgressData>({
-    current: 0,
-    total: 0,
-    percentage: 0,
-    currentFileName: '',
-  });
 
-  // 最近水印配置历史
-  const [recentWatermarks, setRecentWatermarks] = useState<WatermarkConfigType[]>([]);
+
+
 
   const [processedImages, setProcessedImages] = useState<ImageFile[]>([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
-
+  
   // 确保currentPreviewIndex在有效范围内
   useEffect(() => {
     if (images.length > 0 && currentPreviewIndex >= images.length) {
@@ -60,216 +48,63 @@ const App: React.FC = () => {
 
 
   const handleImagesSelected = useCallback((selectedImages: ImageFile[]) => {
-    setImages(selectedImages);
-  }, []);
-
-  const handleProcessImages = async () => {
-    if (images.length === 0) {
-      message.warning('请先选择图片');
-      return;
-    }
-
-    if (watermarkConfig.type === 'text' && !watermarkConfig.text) {
-      message.warning('请输入水印文本');
-      return;
-    }
-
-    if (watermarkConfig.type === 'image' && !watermarkConfig.customImage) {
-      message.warning('请上传水印图片');
-      return;
-    }
-
-    // 添加详细的调试信息
-    console.log('=== 开始处理图片 ===');
-    console.log('图片数量:', images.length);
-    console.log('水印配置:', JSON.stringify(watermarkConfig, null, 2));
-    console.log('输出配置:', JSON.stringify(outputConfig, null, 2));
+    console.log('选择新图片 - 数量:', selectedImages.length);
+    console.log('选择前images数量:', images.length);
     
-    // 验证图片数据
-    images.forEach((img, index) => {
-      console.log(`图片 ${index + 1}:`, {
-        name: img.name,
-        size: img.size,
-        file: img.file,
-        fileType: img.file?.type,
-        fileSize: img.file?.size,
-        url: img.url
-      });
-    });
-    
-    // 测试Canvas支持
-    try {
-      const testCanvas = document.createElement('canvas');
-      const testCtx = testCanvas.getContext('2d');
-      if (!testCtx) {
-        throw new Error('浏览器不支持Canvas 2D上下文');
+    // 先清理之前的图片URL
+    images.forEach(img => {
+      if (img.url) {
+        console.log('清理旧图片URL:', img.url);
+        URL.revokeObjectURL(img.url);
       }
-      console.log('Canvas 2D上下文测试通过');
-    } catch (error) {
-      console.error('Canvas测试失败:', error);
-      message.error('浏览器不支持Canvas功能');
-      return;
-    }
-
-    setIsProcessing(true);
-    setProgress({
-      current: 0,
-      total: images.length,
-      percentage: 0,
-      currentFileName: '',
-    });
-
-    const processedResults: ImageFile[] = [];
-
-    try {
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        
-        setProgress(prev => ({
-          ...prev,
-          current: i + 1,
-          percentage: ((i + 1) / images.length) * 100,
-          currentFileName: image.name,
-        }));
-
-        try {
-          console.log(`=== 处理图片 ${i + 1}/${images.length} ===`);
-          console.log('图片名称:', image.name);
-          console.log('文件大小:', image.file.size);
-          console.log('文件类型:', image.file.type);
-          console.log('文件对象:', image.file);
-          
-          // 验证文件
-          if (!image.file || image.file.size === 0) {
-            throw new Error('文件无效或为空');
-          }
-          
-          // 验证水印配置
-          if (watermarkConfig.type === 'text' && !watermarkConfig.text) {
-            throw new Error('水印文本为空');
-          }
-          
-          console.log('开始创建WatermarkProcessor...');
-          const processor = new WatermarkProcessor();
-          console.log('WatermarkProcessor创建成功');
-          
-          console.log('开始处理图片...');
-          const processedBlob = await processor.processImage(
-            image.file,
-            watermarkConfig,
-            outputConfig
-          );
-          console.log('图片处理完成:', image.name, '生成blob大小:', processedBlob.size);
-
-          const processedUrl = URL.createObjectURL(processedBlob);
-          const processedImage: ImageFile = {
-            ...image,
-            processed: true,
-            processedUrl,
-          };
-
-          processedResults.push(processedImage);
-          console.log(`图片 ${i + 1} 处理成功`);
-        } catch (error) {
-          console.error(`处理图片 ${image.name} 失败:`, error);
-          console.error('错误详情:', error.message);
-          console.error('错误堆栈:', error.stack);
-          message.error(`处理图片 ${image.name} 失败: ${error.message}`);
-        }
-      }
-
-      setProcessedImages(processedResults);
-      message.success(`成功处理 ${processedResults.length} 张图片`);
-    } catch (error) {
-      console.error('批量处理失败:', error);
-      message.error('批量处理失败');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleClearResults = () => {
-    // 先清理URL对象，再清空状态
-    processedImages.forEach(img => {
       if (img.processedUrl) {
+        console.log('清理旧processedURL:', img.processedUrl);
         URL.revokeObjectURL(img.processedUrl);
       }
     });
     
-    // 清空状态
-    setProcessedImages([]);
-  };
+    setImages(selectedImages);
+    setProcessedImages([]); // 清空处理结果
+    setCurrentPreviewIndex(0); // 重置预览索引
+    console.log('设置新图片数组完成');
+  }, [images]);
 
-  // 保存水印配置到最近历史
-  const saveToRecentWatermarks = (config: WatermarkConfigType) => {
-    const newRecent = [config, ...recentWatermarks.filter(item => 
-      JSON.stringify(item) !== JSON.stringify(config)
-    )].slice(0, 5); // 保留最近5个
-    setRecentWatermarks(newRecent);
-    localStorage.setItem('recentWatermarks', JSON.stringify(newRecent));
-  };
 
-  // 加载最近水印配置
-  const loadRecentWatermarks = () => {
-    const saved = localStorage.getItem('recentWatermarks');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setRecentWatermarks(parsed);
-      } catch (error) {
-        console.error('加载最近水印配置失败:', error);
-      }
-    }
-  };
 
-  // 应用最近水印配置
-  const applyRecentWatermark = (config: WatermarkConfigType) => {
-    setWatermarkConfig(config);
-    message.success('已应用最近的水印配置');
-  };
+
 
   // 清空所有图片
   const handleClearAllImages = () => {
+    console.log('清空前 - images数量:', images.length, 'processedImages数量:', processedImages.length);
+    
     // 先清理所有URL对象，再清空状态
     [...images, ...processedImages].forEach(img => {
-      if (img.url) URL.revokeObjectURL(img.url);
-      if (img.processedUrl) URL.revokeObjectURL(img.processedUrl);
+      if (img.url) {
+        console.log('清理URL:', img.url);
+        URL.revokeObjectURL(img.url);
+      }
+      if (img.processedUrl) {
+        console.log('清理processedURL:', img.processedUrl);
+        URL.revokeObjectURL(img.processedUrl);
+      }
     });
     
-    // 清空状态
+    // 强制清空状态 - 使用空数组确保完全清空
     setImages([]);
     setProcessedImages([]);
     setCurrentPreviewIndex(0);
+
     
+    // 强制重新渲染
+    setTimeout(() => {
+      console.log('延迟检查 - images数量:', images.length, 'processedImages数量:', processedImages.length);
+    }, 100);
+    
+    console.log('清空后 - 状态已重置');
     message.success('已清空所有图片');
   };
 
-  const handleReset = () => {
-    // 只重置配置，保留图片
-    setProcessedImages([]);
-    setWatermarkConfig({
-      type: 'text',
-      text: 'AI生成',
-      font: 'SourceHanSansCN',
-      fontSize: 24,
-      color: '#ffffff',
-      backgroundColor: '#000000',
-      backgroundOpacity: 80,
-      borderStyle: 'solid',
-      borderColor: '#000000',
-      borderWidth: 2,
-      borderOpacity: 100,
-      position: 'top-left',
-    });
-    setOutputConfig({
-      quality: 1.0,
-      scale: 1.0,
-    });
-    // 只清理处理后的图片URL
-    processedImages.forEach(img => {
-      if (img.processedUrl) URL.revokeObjectURL(img.processedUrl);
-    });
-  };
+
 
   const handleBatchDownload = async () => {
     if (images.length === 0) {
@@ -324,7 +159,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('批量下载失败:', error);
       message.destroy();
-      message.error(`批量下载失败: ${error.message}`);
+      message.error(`批量下载失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
@@ -376,7 +211,7 @@ const App: React.FC = () => {
     
     // 计算Canvas中的实际尺寸
     const canvasFontSize = (watermarkConfig.fontSize || 24) * outputScale;
-    const canvasPadding = 7.33 * outputScale; // 6 + 1.33pt (增加1pt的左右边距)
+    const canvasPadding = 9.33 * outputScale; // 6 + 3.33pt (增加更多左右边距，让文字不局促)
     const canvasBorderRadius = 6 * outputScale;
     const canvasBorderWidth = (watermarkConfig.borderWidth || 2) * outputScale;
     const canvasMargin = (watermarkConfig.margin || 15) * outputScale;
@@ -448,7 +283,7 @@ const App: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '80px',
+        height: '100px',
         boxShadow: '0 2px 8px rgba(59, 130, 246, 0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -477,7 +312,8 @@ const App: React.FC = () => {
               color: '#1a365d',
               fontSize: '28px',
               fontWeight: '700',
-              letterSpacing: '1px'
+              letterSpacing: '1px',
+              lineHeight: '1.2'
             }}>
               AI水印小助手
             </Title>
@@ -486,7 +322,8 @@ const App: React.FC = () => {
               color: '#3b82f6', 
               fontSize: '14px',
               fontWeight: '500',
-              opacity: '0.8'
+              opacity: '0.8',
+              lineHeight: '1.4'
             }}>
               一键批量添加AI标识水印，符合法规要求
             </Paragraph>
@@ -558,7 +395,7 @@ const App: React.FC = () => {
         {/* 图片上传 */}
         <ImageUpload 
           onImagesSelected={handleImagesSelected}
-          disabled={isProcessing}
+          disabled={false}
         />
 
         {images.length > 0 && (
@@ -800,30 +637,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* 最近使用的水印配置 */}
-                  {recentWatermarks.length > 0 && (
-                    <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
-                        最近使用:
-                      </label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {recentWatermarks.slice(0, 3).map((config, index) => (
-                          <Button
-                            key={index}
-                            size="small"
-                            onClick={() => setWatermarkConfig(config)}
-                            style={{ 
-                              background: '#f0f0f0', 
-                              color: '#666',
-                              border: '1px solid #ddd'
-                            }}
-                          >
-                            配置 {index + 1}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+
                   
                   {/* 水印类型 */}
                   <div style={{ marginBottom: '20px' }}>
@@ -949,55 +763,7 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
-                          水印边距: {watermarkConfig.margin || 15}px
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="50"
-                          value={watermarkConfig.margin || 15}
-                          onChange={(e) => setWatermarkConfig(prev => ({ ...prev, margin: parseInt(e.target.value) }))}
-                          style={{
-                            width: '100%',
-                            height: '6px',
-                            background: '#3b82f6',
-                            borderRadius: '3px',
-                            outline: 'none'
-                          }}
-                        />
-                        <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
-                          <span style={{ position: 'absolute', left: '0%' }}>0px</span>
-                          <span style={{ position: 'absolute', left: '20%', transform: 'translateX(-50%)' }}>10px</span>
-                          <span style={{ position: 'absolute', left: '40%', transform: 'translateX(-50%)' }}>20px</span>
-                          <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>30px</span>
-                          <span style={{ position: 'absolute', left: '80%', transform: 'translateX(-50%)' }}>40px</span>
-                          <span style={{ position: 'absolute', right: '0%' }}>50px</span>
-                        </div>
-                      </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
-                          水印位置:
-                        </label>
-                        <select
-                          value={watermarkConfig.position}
-                          onChange={(e) => setWatermarkConfig(prev => ({ ...prev, position: e.target.value as any }))}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            border: '1px solid #3b82f6',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                          }}
-                        >
-                          <option value="top-left">左上角</option>
-                          <option value="top-right">右上角</option>
-                          <option value="bottom-left">左下角</option>
-                          <option value="bottom-right">右下角</option>
-                        </select>
-                      </div>
 
                       {/* 背景样式设置 */}
                       <div style={{ marginBottom: '20px' }}>
@@ -1119,14 +885,35 @@ const App: React.FC = () => {
                       <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
                         上传水印图片:
                       </label>
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#6b7280', 
+                        marginBottom: '8px',
+                        padding: '6px 8px',
+                        background: '#f3f4f6',
+                        borderRadius: '4px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        💡 提示：可上传最多3个水印图片作为备选，点击选择要使用的水印
+                      </div>
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setWatermarkConfig(prev => ({ ...prev, customImage: file }));
+                          const files = Array.from(e.target.files || []);
+                          if (files.length > 0) {
+                            // 限制最多3个文件
+                            const limitedFiles = files.slice(0, 3);
+                            setWatermarkConfig(prev => ({ 
+                              ...prev, 
+                              customImages: limitedFiles,
+                              customImage: limitedFiles[0], // 保持向后兼容
+                              selectedWatermarkIndex: 0 // 默认选择第一个
+                            }));
                           }
+                          // 清空文件输入框，避免显示多个文件
+                          e.target.value = '';
                         }}
                         style={{
                           width: '100%',
@@ -1136,8 +923,238 @@ const App: React.FC = () => {
                           fontSize: '14px'
                         }}
                       />
+                      {(watermarkConfig.customImages && watermarkConfig.customImages.length > 0) && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          padding: '8px 12px',
+                          background: '#f0f9ff',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#1e40af'
+                        }}>
+                          <div style={{ 
+                            marginBottom: '8px', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center' 
+                          }}>
+                            <span>✅ 已选择 {watermarkConfig.customImages.length} 个水印图片 (最多3个)</span>
+                            <button
+                              onClick={() => setWatermarkConfig(prev => ({ 
+                                ...prev, 
+                                customImages: undefined,
+                                customImage: undefined 
+                              }))}
+                              style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '500'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = '#dc2626';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = '#ef4444';
+                              }}
+                            >
+                              🗑️ 清除全部
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {watermarkConfig.customImages.map((file, index) => (
+                              <div key={file.name + file.lastModified} style={{ position: 'relative' }}>
+                                <div
+                                  onClick={() => {
+                                    setWatermarkConfig(prev => ({ 
+                                      ...prev, 
+                                      selectedWatermarkIndex: index,
+                                      customImage: file // 更新当前选中的图片
+                                    }));
+                                  }}
+                                  style={{
+                                    cursor: 'pointer',
+                                    border: watermarkConfig.selectedWatermarkIndex === index ? '2px solid #3b82f6' : '1px dashed #94a3b8',
+                                    borderRadius: '4px',
+                                    padding: '2px',
+                                    background: watermarkConfig.selectedWatermarkIndex === index ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`水印图片预览 ${index + 1}`}
+                                    onError={(e) => {
+                                      console.error('水印图片预览加载失败:', e);
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                    style={{
+                                      maxWidth: '80px',
+                                      maxHeight: '60px',
+                                      borderRadius: '4px',
+                                      objectFit: 'contain',
+                                      background: 'transparent',
+                                      imageRendering: 'auto',
+                                      display: 'block'
+                                    }}
+                                  />
+                                  {/* 选中标识 */}
+                                  {watermarkConfig.selectedWatermarkIndex === index && (
+                                    <div
+                                      style={{
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: '2px',
+                                        background: '#3b82f6',
+                                        color: 'white',
+                                        borderRadius: '50%',
+                                        width: '16px',
+                                        height: '16px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      ✓
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const newImages = watermarkConfig.customImages?.filter((_, i) => i !== index);
+                                    const newSelectedIndex = watermarkConfig.selectedWatermarkIndex === index ? 0 : 
+                                      (watermarkConfig.selectedWatermarkIndex && watermarkConfig.selectedWatermarkIndex > index ? 
+                                        watermarkConfig.selectedWatermarkIndex - 1 : watermarkConfig.selectedWatermarkIndex);
+                                    
+                                    setWatermarkConfig(prev => ({ 
+                                      ...prev, 
+                                      customImages: newImages,
+                                      customImage: newImages?.[newSelectedIndex || 0],
+                                      selectedWatermarkIndex: newSelectedIndex
+                                    }));
+                                  }}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    right: '-8px',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '20px',
+                                    height: '20px',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* 水印大小设置 - 仅图片水印 */}
+                  {watermarkConfig.type === 'image' && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
+                        水印大小: {Math.round((watermarkConfig.watermarkSize || 1.0) * 100)}%
+                      </label>
+                      <input
+                        type="range"
+                        min="0.3"
+                        max="2.0"
+                        step="0.1"
+                        value={watermarkConfig.watermarkSize || 1.0}
+                        onChange={(e) => setWatermarkConfig(prev => ({ ...prev, watermarkSize: parseFloat(e.target.value) }))}
+                        style={{
+                          width: '100%',
+                          height: '6px',
+                          background: '#3b82f6',
+                          borderRadius: '3px',
+                          outline: 'none'
+                        }}
+                      />
+                      <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
+                        <span style={{ position: 'absolute', left: '0%' }}>30%</span>
+                        <span style={{ position: 'absolute', left: '20%', transform: 'translateX(-50%)' }}>60%</span>
+                        <span style={{ position: 'absolute', left: '40%', transform: 'translateX(-50%)' }}>100%</span>
+                        <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>140%</span>
+                        <span style={{ position: 'absolute', left: '80%', transform: 'translateX(-50%)' }}>180%</span>
+                        <span style={{ position: 'absolute', right: '0%' }}>200%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 水印边距设置 - 文字和图片水印共用 */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
+                      水印边距: {watermarkConfig.margin || 15}px
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="50"
+                      value={watermarkConfig.margin || 15}
+                      onChange={(e) => setWatermarkConfig(prev => ({ ...prev, margin: parseInt(e.target.value) }))}
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        background: '#3b82f6',
+                        borderRadius: '3px',
+                        outline: 'none'
+                      }}
+                    />
+                    <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
+                      <span style={{ position: 'absolute', left: '0%' }}>0px</span>
+                      <span style={{ position: 'absolute', left: '20%', transform: 'translateX(-50%)' }}>10px</span>
+                      <span style={{ position: 'absolute', left: '40%', transform: 'translateX(-50%)' }}>20px</span>
+                      <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>30px</span>
+                      <span style={{ position: 'absolute', left: '80%', transform: 'translateX(-50%)' }}>40px</span>
+                      <span style={{ position: 'absolute', right: '0%' }}>50px</span>
+                    </div>
+                  </div>
+
+                  {/* 水印位置设置 - 文字和图片水印共用 */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
+                      水印位置:
+                    </label>
+                    <select
+                      value={watermarkConfig.position}
+                      onChange={(e) => setWatermarkConfig(prev => ({ ...prev, position: e.target.value as any }))}
+                      style={{
+                        width: '100%',
+                        padding: '12px 40px 12px 16px',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        appearance: 'none',
+                        backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b82f6' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 12px center',
+                        backgroundSize: '16px 16px'
+                      }}
+                    >
+                      <option value="top-left">左上角</option>
+                      <option value="top-right">右上角</option>
+                      <option value="bottom-left">左下角</option>
+                      <option value="bottom-right">右下角</option>
+                    </select>
+                  </div>
                 </div>
 
 
@@ -1171,10 +1188,15 @@ const App: React.FC = () => {
                         onChange={(e) => setOutputConfig(prev => ({ ...prev, quality: parseFloat(e.target.value) }))}
                         style={{
                           width: '100%',
-                          padding: '12px 16px',
+                          padding: '12px 40px 12px 16px',
                           border: '1px solid #3b82f6',
                           borderRadius: '8px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b82f6' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '16px 16px'
                         }}
                       >
                         <option value={0.1}>10%</option>
@@ -1195,10 +1217,15 @@ const App: React.FC = () => {
                         onChange={(e) => setOutputConfig(prev => ({ ...prev, scale: parseFloat(e.target.value) }))}
                         style={{
                           width: '100%',
-                          padding: '12px 16px',
+                          padding: '12px 40px 12px 16px',
                           border: '1px solid #3b82f6',
                           borderRadius: '8px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b82f6' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center',
+                          backgroundSize: '16px 16px'
                         }}
                       >
                         <option value={0.1}>10%</option>
@@ -1207,58 +1234,11 @@ const App: React.FC = () => {
                         <option value={0.8}>80%</option>
                         <option value={0.9}>90%</option>
                         <option value={1.0}>100%</option>
-                        <option value={1.2}>120%</option>
-                        <option value={1.5}>150%</option>
-                        <option value={2.0}>200%</option>
                       </select>
                     </div>
                   </div>
                   
-                  {/* 开始处理按钮 */}
-                  <div style={{ textAlign: 'center' }}>
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<PlayCircleOutlined />}
-                      onClick={handleProcessImages}
-                      loading={isProcessing}
-                      disabled={images.length === 0}
-                      style={{ 
-                        height: '56px', 
-                        padding: '0 40px',
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        borderRadius: '12px',
-                        background: images.length === 0 ? '#d1d5db' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                        borderColor: images.length === 0 ? '#d1d5db' : 'transparent',
-                        boxShadow: images.length === 0 ? 'none' : '0 6px 20px rgba(59, 130, 246, 0.4)',
-                        transform: images.length === 0 ? 'none' : 'translateY(-2px)',
-                        transition: 'all 0.3s ease',
-                        border: 'none'
-                      }}
-                    >
-                      {isProcessing ? '处理中...' : '开始处理'}
-                    </Button>
-                    {images.length === 0 && (
-                      <div style={{ 
-                        color: '#6b7280', 
-                        fontSize: '14px', 
-                        marginTop: '8px'
-                      }}>
-                        请先上传图片
-                      </div>
-                    )}
-                    {images.length > 0 && (
-                      <div style={{ 
-                        color: '#3b82f6', 
-                        fontSize: '14px', 
-                        marginTop: '8px',
-                        fontWeight: '500'
-                      }}>
-                        调整完成即可点击开始处理，要点击才能打水印成功哦！
-                      </div>
-                    )}
-                  </div>
+
                 </div>
 
                 {/* 图片预览 */}
@@ -1315,26 +1295,56 @@ const App: React.FC = () => {
                               borderColor: '#3b82f6',
                               color: '#3b82f6',
                               fontSize: '14px',
-                              height: '32px',
-                              padding: '0 16px',
-                              minWidth: '80px'
+                              fontWeight: '600',
+                              height: '40px',
+                              padding: '0 20px',
+                              minWidth: '100px',
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)',
+                              transition: 'all 0.3s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.2)';
                             }}
                           >
-                            下载
+                            📥 下载
                           </Button>
                           <Button
                             type="primary"
                             onClick={handleBatchDownload}
                             style={{
-                              background: '#3b82f6',
+                              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                               borderColor: '#3b82f6',
                               fontSize: '14px',
-                              height: '32px',
-                              padding: '0 16px',
-                              minWidth: '80px'
+                              fontWeight: '600',
+                              height: '40px',
+                              padding: '0 20px',
+                              minWidth: '120px',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                              transition: 'all 0.3s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
                             }}
                           >
-                            批量下载{images.length > 1 && ` (${images.length}张)`}
+                            📦 批量下载{images.length > 1 && ` (${images.length}张)`}
                           </Button>
                           <Button
                             onClick={handleClearAllImages}
@@ -1342,12 +1352,29 @@ const App: React.FC = () => {
                               borderColor: '#dc2626',
                               color: '#dc2626',
                               fontSize: '14px',
-                              height: '32px',
-                              padding: '0 16px',
-                              minWidth: '80px'
+                              fontWeight: '600',
+                              height: '40px',
+                              padding: '0 20px',
+                              minWidth: '100px',
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+                              transition: 'all 0.3s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.3)';
+                              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.2)';
+                              e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            清空图片
+                            🗑️ 清空图片
                           </Button>
                         </div>
                       )}
@@ -1393,7 +1420,7 @@ const App: React.FC = () => {
                       )}
                       
                       {/* 图片预览区域 */}
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <div className="preview-container" style={{ position: 'relative', display: 'inline-block' }}>
                         {/* 显示当前选中的图片 */}
                         {images.length > 0 && images[currentPreviewIndex] && (
                           <img
@@ -1418,31 +1445,57 @@ const App: React.FC = () => {
                           />
                         )}
                         
-                        {/* 图片水印预览 - 只在未处理时显示 */}
-                        {processedImages.length === 0 && watermarkConfig.type === 'image' && watermarkConfig.customImage && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              ...(watermarkConfig.position === 'top-left' && { top: `${watermarkConfig.margin || 15}px`, left: `${watermarkConfig.margin || 15}px` }),
-                              ...(watermarkConfig.position === 'top-right' && { top: `${watermarkConfig.margin || 15}px`, right: `${watermarkConfig.margin || 15}px` }),
-                              ...(watermarkConfig.position === 'bottom-left' && { bottom: `${watermarkConfig.margin || 15}px`, left: `${watermarkConfig.margin || 15}px` }),
-                              ...(watermarkConfig.position === 'bottom-right' && { bottom: `${watermarkConfig.margin || 15}px`, right: `${watermarkConfig.margin || 15}px` }),
-                              width: '60px',
-                              height: '40px',
-                              borderRadius: '4px',
-                              border: '2px solid #3b82f6',
-                              background: '#f0f0f0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              color: '#666',
-                              pointerEvents: 'none',
-                              zIndex: 10
-                            }}
-                          >
-                            水印图片
-                          </div>
+                        {/* 图片水印预览 - 只显示选中的水印 */}
+                        {watermarkConfig.type === 'image' && watermarkConfig.customImages && watermarkConfig.customImages.length > 0 && watermarkConfig.selectedWatermarkIndex !== undefined && (
+                          (() => {
+                            const selectedIndex = watermarkConfig.selectedWatermarkIndex;
+                            const selectedFile = watermarkConfig.customImages[selectedIndex];
+                            
+                            if (!selectedFile) return null;
+                            
+                            return (
+                              <img
+                                key={selectedFile.name + selectedFile.lastModified}
+                                src={URL.createObjectURL(selectedFile)}
+                                alt={`选中的水印图片`}
+                                onError={(e) => {
+                                  console.error('图片水印加载失败:', e);
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                onLoad={() => {
+                                  console.log('图片水印加载成功，文件名:', selectedFile.name);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  ...(watermarkConfig.position === 'top-left' ? { 
+                                    top: `${watermarkConfig.margin || 15}px`, 
+                                    left: `${watermarkConfig.margin || 15}px` 
+                                  } : watermarkConfig.position === 'top-right' ? { 
+                                    top: `${watermarkConfig.margin || 15}px`, 
+                                    right: `${watermarkConfig.margin || 15}px` 
+                                  } : watermarkConfig.position === 'bottom-left' ? { 
+                                    bottom: `${watermarkConfig.margin || 15}px`, 
+                                    left: `${watermarkConfig.margin || 15}px` 
+                                  } : watermarkConfig.position === 'bottom-right' ? { 
+                                    bottom: `${watermarkConfig.margin || 15}px`, 
+                                    right: `${watermarkConfig.margin || 15}px` 
+                                  } : {
+                                    top: `${watermarkConfig.margin || 15}px`, 
+                                    left: `${watermarkConfig.margin || 15}px` 
+                                  }),
+                                  maxWidth: `${120 * (watermarkConfig.watermarkSize || 1.0)}px`,
+                                  maxHeight: `${80 * (watermarkConfig.watermarkSize || 1.0)}px`,
+                                  borderRadius: '4px',
+                                  border: '1px dashed #94a3b8',
+                                  objectFit: 'contain',
+                                  pointerEvents: 'none',
+                                  background: 'transparent',
+                                  imageRendering: 'auto',
+                                  zIndex: 10
+                                }}
+                              />
+                            );
+                          })()
                         )}
                       </div>
                       
@@ -1483,10 +1536,7 @@ const App: React.FC = () => {
         )}
 
         {/* 处理进度 */}
-        <ProcessingProgress
-          progress={progress}
-          isProcessing={isProcessing}
-        />
+
       </Content>
     </Layout>
   );

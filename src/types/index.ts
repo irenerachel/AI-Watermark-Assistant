@@ -12,7 +12,10 @@ export interface WatermarkConfig {
   borderOpacity?: number;
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   customImage?: File;
+  customImages?: File[];
+  selectedWatermarkIndex?: number;
   margin?: number;
+  watermarkSize?: number;
 }
 
 export interface ImageFile {

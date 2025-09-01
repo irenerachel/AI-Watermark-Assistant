@@ -32,7 +32,7 @@ export function validateFiles(files: File[]): string | null {
 }
 
 export function createImageFile(file: File): Promise<ImageFile> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     console.log('创建图片文件:', file.name, '类型:', file.type, '大小:', file.size);
     
     const img = new Image();
