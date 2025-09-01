@@ -1,0 +1,334 @@
+/* 思源黑体字体定义 */
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Regular#1.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Light#1.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-ExtraLight#1.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Medium#1.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Bold#1.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Heavy#1.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SourceHanSansCN';
+  src: url('/fonts/SourceHanSansCN-Normal#1.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* 得意黑字体定义 */
+@font-face {
+  font-family: 'SmileySans';
+  src: url('/fonts/SmileySans-Oblique.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* 汇文明朝体字体定义 */
+@font-face {
+  font-family: 'HuiWenMingChao';
+  src: url('/fonts/汇文明朝体.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* 香脆等粗宋字体定义 */
+@font-face {
+  font-family: 'XiangcuiDengcusong';
+  src: url('/fonts/XiangcuiDengcusong.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* 站酷仓耳渔阳体字体定义 */
+@font-face {
+  font-family: 'ZhanKuCangErYuYang';
+  src: url('/fonts/站酷仓耳渔阳体-W01.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ZhanKuCangErYuYang';
+  src: url('/fonts/站酷仓耳渔阳体-W02.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ZhanKuCangErYuYang';
+  src: url('/fonts/站酷仓耳渔阳体-W03.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ZhanKuCangErYuYang';
+  src: url('/fonts/站酷仓耳渔阳体-W04.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ZhanKuCangErYuYang';
+  src: url('/fonts/站酷仓耳渔阳体-W05.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #f8faff;
+  min-height: 100vh;
+  color: #1a365d;
+  line-height: 1.6;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.ant-layout {
+  background: transparent !important;
+}
+
+.upload-area {
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+  background: transparent;
+  text-align: center;
+  padding: 32px 20px;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.upload-area:hover {
+  border-color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.upload-area.dragover {
+  border-color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.2);
+}
+
+
+
+.upload-icon {
+  font-size: 48px;
+  color: #3b82f6;
+  margin-bottom: 16px;
+}
+
+.upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1a365d;
+  margin-bottom: 8px;
+}
+
+.upload-hint {
+  font-size: 14px;
+  color: #1a365d;
+  margin-bottom: 16px;
+}
+
+
+
+.watermark-preview {
+  position: relative;
+  display: inline-block;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.watermark-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.processing-card {
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  margin-bottom: 16px;
+}
+
+.result-card {
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  margin-top: 16px;
+}
+
+.step-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.step-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a365d;
+}
+
+
+
+.upload-features {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1a365d;
+  font-size: 14px;
+}
+
+.custom-mask {
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+}
+
+/* 移除所有Ant Design Upload相关样式，因为我们现在使用自定义上传区域 */
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .flex-layout {
+    flex-direction: column !important;
+  }
+  
+  .flex-layout > div {
+    flex: none !important;
+    width: 100% !important;
+  }
+}
+
+.ant-card {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid #3b82f6 !important;
+}
+
+.ant-card-head {
+  padding: 0 20px !important;
+  min-height: 48px !important;
+  border-bottom: 1px solid #3b82f6 !important;
+}
+
+.ant-card-body {
+  padding: 20px !important;
+}
+
+.ant-form-item {
+  margin-bottom: 16px !important;
+}
+
+.ant-form-item-label > label {
+  font-weight: 500 !important;
+  color: #1a365d !important;
+}
+
+.ant-btn-primary {
+  background: #3b82f6 !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+
+.ant-btn-primary:hover {
+  background: #1d4ed8 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+
+
+.ant-progress-bg {
+  background: #3b82f6 !important;
+}
+
+.ant-slider-track {
+  background: #3b82f6 !important;
+}
+
+.ant-slider-handle {
+  border-color: #3b82f6 !important;
+}
+
+.ant-radio-button-wrapper-checked {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.ant-radio-button-wrapper-checked:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+
