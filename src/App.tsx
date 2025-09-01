@@ -728,10 +728,15 @@ const App: React.FC = () => {
                             onChange={(e) => setWatermarkConfig(prev => ({ ...prev, font: e.target.value }))}
                             style={{
                               width: '100%',
-                              padding: '12px 16px',
+                              padding: '12px 40px 12px 16px',
                               border: '1px solid #3b82f6',
                               borderRadius: '8px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                              appearance: 'none',
+                              backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b82f6' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 12px center',
+                              backgroundSize: '16px 16px'
                             }}
                           >
                             <option value="SourceHanSansCN">思源黑体</option>
@@ -739,6 +744,8 @@ const App: React.FC = () => {
                             <option value="HuiWenMingChao">汇文明朝体</option>
                             <option value="XiangcuiDengcusong">香脆等粗宋</option>
                             <option value="ZhanKuCangErYuYang">站酷仓耳渔阳体</option>
+                            <option value="JiangChengHeiTi-300W">江城黑体</option>
+                            <option value="LXGWWenKaiMono-Light">霞鹜文楷</option>
                           </select>
                         </div>
                         <div style={{ flex: '1' }}>
@@ -752,9 +759,11 @@ const App: React.FC = () => {
                             style={{
                               width: '100%',
                               height: '48px',
-                              border: '1px solid #3b82f6',
+                              border: 'none',
                               borderRadius: '8px',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              background: 'transparent',
+                              marginTop: '-3px'
                             }}
                           />
                         </div>
@@ -826,10 +835,10 @@ const App: React.FC = () => {
                         </div>
 
                         {watermarkConfig.borderStyle !== 'none' && (
-                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                             <div style={{ flex: '1' }}>
                               <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
-                                {watermarkConfig.borderStyle === 'outline' ? '边框颜色' : '背景颜色'}:
+                                <strong>{watermarkConfig.borderStyle === 'outline' ? '边框颜色' : '背景颜色'}:</strong>
                               </label>
                               <input
                                 type="color"
@@ -844,15 +853,16 @@ const App: React.FC = () => {
                                 style={{
                                   width: '100%',
                                   height: '40px',
-                                  border: '1px solid #3b82f6',
+                                  border: 'none',
                                   borderRadius: '6px',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  background: 'transparent'
                                 }}
                               />
                             </div>
-                            <div style={{ flex: '1' }}>
+                            <div style={{ flex: '1', marginTop: '5px' }}>
                               <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
-                                {watermarkConfig.borderStyle === 'outline' ? '边框透明度' : '背景透明度'}: {watermarkConfig.borderStyle === 'outline' ? (watermarkConfig.borderOpacity || 100) : (watermarkConfig.backgroundOpacity || 80)}%
+                                <strong>{watermarkConfig.borderStyle === 'outline' ? '边框透明度' : '背景透明度'}:</strong> {watermarkConfig.borderStyle === 'outline' ? (watermarkConfig.borderOpacity || 100) : (watermarkConfig.backgroundOpacity || 80)}%
                               </label>
                               <input
                                 type="range"
@@ -871,7 +881,8 @@ const App: React.FC = () => {
                                   height: '6px',
                                   background: '#3b82f6',
                                   borderRadius: '3px',
-                                  outline: 'none'
+                                  outline: 'none',
+                                  marginTop: '5px'
                                 }}
                               />
                             </div>
@@ -882,7 +893,7 @@ const App: React.FC = () => {
                         {watermarkConfig.borderStyle === 'outline' && (
                           <div style={{ marginTop: '16px' }}>
                             <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
-                              边框宽度: {watermarkConfig.borderWidth || 2}px
+                              <strong>边框宽度:</strong> {watermarkConfig.borderWidth || 2}px
                             </label>
                             <input
                               type="range"
@@ -1132,7 +1143,7 @@ const App: React.FC = () => {
                     <input
                       type="range"
                       min="0"
-                      max="50"
+                      max="100"
                       value={watermarkConfig.margin || 15}
                       onChange={(e) => setWatermarkConfig(prev => ({ ...prev, margin: parseInt(e.target.value) }))}
                       style={{
@@ -1145,11 +1156,11 @@ const App: React.FC = () => {
                     />
                     <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
                       <span style={{ position: 'absolute', left: '0%' }}>0px</span>
-                      <span style={{ position: 'absolute', left: '20%', transform: 'translateX(-50%)' }}>10px</span>
-                      <span style={{ position: 'absolute', left: '40%', transform: 'translateX(-50%)' }}>20px</span>
-                      <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>30px</span>
-                      <span style={{ position: 'absolute', left: '80%', transform: 'translateX(-50%)' }}>40px</span>
-                      <span style={{ position: 'absolute', right: '0%' }}>50px</span>
+                      <span style={{ position: 'absolute', left: '20%', transform: 'translateX(-50%)' }}>20px</span>
+                      <span style={{ position: 'absolute', left: '40%', transform: 'translateX(-50%)' }}>40px</span>
+                      <span style={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>60px</span>
+                      <span style={{ position: 'absolute', left: '80%', transform: 'translateX(-50%)' }}>80px</span>
+                      <span style={{ position: 'absolute', right: '0%' }}>100px</span>
                     </div>
                   </div>
 
@@ -1182,20 +1193,14 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-
-
-              </div>
-
-              {/* 右侧：预览和结果区域 */}
-              <div style={{ flex: '1', minWidth: '0' }}>
-                {/* 输出设置和处理按钮 */}
+                {/* 输出设置 */}
                 <div style={{ 
                   background: '#fff', 
                   padding: isMobile ? '16px' : '24px', 
                   borderRadius: '12px',
                   border: '1px solid #3b82f6',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
-                  marginBottom: isMobile ? '16px' : '20px'
+                  marginBottom: isMobile ? '16px' : '24px'
                 }}>
                   <div className="step-indicator">
                     <div className="step-number">3</div>
@@ -1216,6 +1221,22 @@ const App: React.FC = () => {
                         fontSize: isMobile ? '13px' : '14px' 
                       }}>
                         图片质量:
+                        {images.length > 0 && images[currentPreviewIndex] && images[currentPreviewIndex].width && images[currentPreviewIndex].height && (
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: '#666', 
+                            fontWeight: 'normal',
+                            marginLeft: '8px'
+                          }}>
+                            ( {outputConfig.quality === 0.1 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.1 / 1000) + ' KB' :
+                              outputConfig.quality === 0.3 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.3 / 1000) + ' KB' :
+                              outputConfig.quality === 0.5 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.5 / 1000) + ' KB' :
+                              outputConfig.quality === 0.7 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.7 / 1000) + ' KB' :
+                              outputConfig.quality === 0.8 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.8 / 1000) + ' KB' :
+                              outputConfig.quality === 0.9 ? '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height * 0.9 / 1000) + ' KB' :
+                              '约 ' + Math.round(images[currentPreviewIndex].width * images[currentPreviewIndex].height / 1000) + ' KB' } )
+                          </span>
+                        )}
                       </label>
                       <select
                         value={outputConfig.quality}
@@ -1243,7 +1264,12 @@ const App: React.FC = () => {
                       </select>
                     </div>
                     <div style={{ flex: '1' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: isMobile ? '6px' : '8px', 
+                        color: '#1a365d', 
+                        fontSize: isMobile ? '13px' : '14px' 
+                      }}>
                         缩放比例:
                         {images.length > 0 && images[currentPreviewIndex] && images[currentPreviewIndex].width && images[currentPreviewIndex].height && (
                           <span style={{ 
@@ -1252,7 +1278,7 @@ const App: React.FC = () => {
                             fontWeight: 'normal',
                             marginLeft: '8px'
                           }}>
-                            ({Math.round(images[currentPreviewIndex].width * (outputConfig.scale || 1))} × {Math.round(images[currentPreviewIndex].height * (outputConfig.scale || 1))})
+                            ( {Math.round(images[currentPreviewIndex].width * (outputConfig.scale || 1))} × {Math.round(images[currentPreviewIndex].height * (outputConfig.scale || 1))} px )
                           </span>
                         )}
                       </label>
@@ -1281,9 +1307,16 @@ const App: React.FC = () => {
                       </select>
                     </div>
                   </div>
-                  
-
                 </div>
+
+              </div>
+
+              {/* 右侧：预览和结果区域 */}
+              <div style={{ flex: '1', minWidth: '0' }}>
+
+
+
+
 
                 {/* 图片预览 */}
                 <div style={{ 
@@ -1292,7 +1325,8 @@ const App: React.FC = () => {
                   borderRadius: '12px',
                   border: '1px solid #3b82f6',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
-                  minHeight: '500px'
+                  minHeight: '500px',
+                  marginTop: '0'
                 }}>
                                       <div style={{ 
                       display: 'flex', 
