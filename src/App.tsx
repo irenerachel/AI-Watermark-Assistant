@@ -44,7 +44,7 @@ const App: React.FC = () => {
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [presetName, setPresetName] = useState('');
   const [showPresetManagement, setShowPresetManagement] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
   
   // 确保currentPreviewIndex在有效范围内
   useEffect(() => {
