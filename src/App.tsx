@@ -39,6 +39,13 @@ const App: React.FC = () => {
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   
+  // 水印预设管理
+  const [presets, setPresets] = useState<Array<{id: string, name: string, config: WatermarkConfigType}>>([]);
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [showPresetManagement, setShowPresetManagement] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  
   // 确保currentPreviewIndex在有效范围内
   useEffect(() => {
     if (images.length > 0 && currentPreviewIndex >= images.length) {
@@ -58,7 +65,226 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
+  // 加载保存的预设
+  useEffect(() => {
+    try {
+      const savedPresets = localStorage.getItem('watermarkPresets');
+      if (savedPresets) {
+        setPresets(JSON.parse(savedPresets));
+      }
+    } catch (error) {
+      console.error('加载预设失败:', error);
+    }
+  }, []);
 
+  // 保存预设到localStorage
+  const savePresetsToStorage = (newPresets: Array<{id: string, name: string, config: WatermarkConfigType}>) => {
+    try {
+      localStorage.setItem('watermarkPresets', JSON.stringify(newPresets));
+    } catch (error) {
+      console.error('保存预设失败:', error);
+    }
+  };
+
+  // 保存当前配置为预设
+  const saveCurrentAsPreset = () => {
+    if (!presetName.trim()) {
+      message.error('请输入预设名称');
+      return;
+    }
+    
+    const newPreset = {
+      id: Date.now().toString(),
+      name: presetName.trim(),
+      config: { ...watermarkConfig }
+    };
+    
+    const newPresets = [...presets, newPreset];
+    setPresets(newPresets);
+    savePresetsToStorage(newPresets);
+    setPresetName('');
+    setShowPresetModal(false);
+    message.success('预设保存成功');
+  };
+
+  // 加载预设
+  const loadPreset = (preset: {id: string, name: string, config: WatermarkConfigType}) => {
+    setWatermarkConfig(preset.config);
+    message.success(`已加载预设: ${preset.name}`);
+  };
+
+  // 删除预设
+  const deletePreset = (presetId: string) => {
+    const newPresets = presets.filter(p => p.id !== presetId);
+    setPresets(newPresets);
+    savePresetsToStorage(newPresets);
+    message.success('预设已删除');
+  };
+
+  // 清空所有预设
+  const clearAllPresets = () => {
+    setPresets([]);
+    savePresetsToStorage([]);
+    message.success('所有预设已清空');
+  };
+
+  // 长按开始
+  const handleLongPressStart = () => {
+    const timer = setTimeout(() => {
+      setShowPresetManagement(true);
+      message.info('进入预设管理模式');
+    }, 800); // 800ms长按
+    setLongPressTimer(timer);
+  };
+
+  // 长按结束
+  const handleLongPressEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  // 退出预设管理模式
+  const exitPresetManagement = () => {
+    setShowPresetManagement(false);
+  };
+
+  // 导出预设为JSON文件
+  const exportPresetsToJSON = () => {
+    try {
+      const dataStr = JSON.stringify(presets, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `watermark-presets-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success('预设配置已导出');
+    } catch (error) {
+      console.error('导出失败:', error);
+      message.error('导出失败');
+    }
+  };
+
+  // 从JSON文件导入预设
+  const importPresetsFromJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedPresets = JSON.parse(e.target?.result as string);
+        if (Array.isArray(importedPresets)) {
+          const newPresets = [...presets, ...importedPresets];
+          setPresets(newPresets);
+          savePresetsToStorage(newPresets);
+          message.success(`成功导入 ${importedPresets.length} 个预设`);
+        } else {
+          message.error('文件格式不正确');
+        }
+      } catch (error) {
+        console.error('导入失败:', error);
+        message.error('导入失败，请检查文件格式');
+      }
+    };
+    reader.readAsText(file);
+    // 清空input值，允许重复选择同一文件
+    event.target.value = '';
+  };
+
+  // 将水印保存为PNG图片
+  const saveWatermarkAsPNG = () => {
+    try {
+      // 创建一个canvas来绘制水印
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        message.error('无法创建画布');
+        return;
+      }
+
+      // 设置画布大小（根据字体大小和文字长度动态调整）
+      const fontSize = watermarkConfig.fontSize || 24;
+      const text = watermarkConfig.text || 'AI生成';
+      const padding = 20;
+      
+      // 设置字体
+      ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+      const textMetrics = ctx.measureText(text);
+      const textWidth = textMetrics.width;
+      const textHeight = fontSize;
+      
+      canvas.width = textWidth + padding * 2;
+      canvas.height = textHeight + padding * 2;
+
+      // 根据边框样式绘制不同的效果
+      if (watermarkConfig.borderStyle === 'outline') {
+        // 线框模式：只绘制边框，不填充背景
+        const borderWidth = watermarkConfig.borderWidth || 2;
+        const borderColor = watermarkConfig.borderColor || '#000000';
+        const borderOpacity = (watermarkConfig.borderOpacity || 100) / 100;
+        
+        // 绘制边框
+        ctx.strokeStyle = borderColor + Math.round(borderOpacity * 255).toString(16).padStart(2, '0');
+        ctx.lineWidth = borderWidth;
+        ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvas.width - borderWidth, canvas.height - borderWidth);
+        
+        // 绘制文字
+        ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+        ctx.fillStyle = watermarkConfig.color || '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      } else if (watermarkConfig.borderStyle === 'solid') {
+        // 实心模式：绘制背景和文字
+        const bgColor = watermarkConfig.backgroundColor || '#000000';
+        const bgOpacity = (watermarkConfig.backgroundOpacity || 80) / 100;
+        
+        // 绘制背景
+        ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 绘制文字
+        ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+        ctx.fillStyle = watermarkConfig.color || '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      } else {
+        // 无边框模式：只绘制文字
+        ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+        ctx.fillStyle = watermarkConfig.color || '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      }
+
+      // 导出为PNG
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `watermark-${text}-${new Date().toISOString().split('T')[0]}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          message.success('水印图片已保存');
+        } else {
+          message.error('保存失败');
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('保存水印图片失败:', error);
+      message.error('保存失败');
+    }
+  };
 
   const handleImagesSelected = useCallback((selectedImages: ImageFile[]) => {
     console.log('选择新图片 - 数量:', selectedImages.length);
@@ -439,11 +665,234 @@ const App: React.FC = () => {
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
                   marginBottom: isMobile ? '16px' : '24px'
                 }}>
-                  <h3 style={{ 
-                    color: '#1a365d', 
-                    marginBottom: isMobile ? '16px' : '20px', 
-                    fontSize: isMobile ? '16px' : '18px' 
-                  }}>水印设置</h3>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: isMobile ? '16px' : '20px' 
+                  }}>
+                    <h3 style={{ 
+                      color: '#1a365d', 
+                      fontSize: isMobile ? '16px' : '18px',
+                      margin: 0
+                    }}>水印设置</h3>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '10px', 
+                      flexWrap: 'wrap',
+                      alignItems: 'center'
+                    }}>
+                      <Button
+                        size="small"
+                        onClick={() => setShowPresetModal(true)}
+                        style={{ 
+                          background: '#3b82f6', 
+                          color: '#fff',
+                          border: 'none',
+                          height: '28px',
+                          padding: '0 12px',
+                          fontSize: '12px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        保存预设
+                      </Button>
+                      {presets.length > 0 && (
+                        <div style={{ position: 'relative' }}>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                if (e.target.value === 'manage-presets') {
+                                  setShowPresetManagement(true);
+                                } else {
+                                  const preset = presets.find(p => p.id === e.target.value);
+                                  if (preset) loadPreset(preset);
+                                }
+                                e.target.value = '';
+                              }
+                            }}
+                            onMouseDown={handleLongPressStart}
+                            onMouseUp={handleLongPressEnd}
+                            onMouseLeave={handleLongPressEnd}
+                            onTouchStart={handleLongPressStart}
+                            onTouchEnd={handleLongPressEnd}
+                            style={{
+                              height: '28px',
+                              padding: '0 12px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              background: '#f9fafb',
+                              color: '#374151',
+                              minWidth: '100px',
+                              appearance: 'none',
+                              backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 8px center',
+                              backgroundSize: '12px 12px',
+                              paddingRight: '28px',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                              cursor: 'pointer'
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="">加载预设</option>
+                            {presets.map(preset => (
+                              <option key={preset.id} value={preset.id}>
+                                {preset.name}
+                              </option>
+                            ))}
+                            <option value="manage-presets">管理预设</option>
+                          </select>
+                          {showPresetManagement && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '32px',
+                              left: '0',
+                              right: '0',
+                              background: '#fff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                              zIndex: 1000,
+                              padding: '8px 0'
+                            }}>
+                              <div style={{
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                borderBottom: '1px solid #f3f4f6'
+                              }}>
+                                预设管理
+                              </div>
+                              {presets.map(preset => (
+                                <div key={preset.id} style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px'
+                                }}>
+                                  <span style={{ color: '#374151' }}>{preset.name}</span>
+                                  <button
+                                    onClick={() => {
+                                      deletePreset(preset.id);
+                                      setShowPresetManagement(false);
+                                    }}
+                                    style={{
+                                      background: '#ef4444',
+                                      color: '#fff',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '2px 6px',
+                                      fontSize: '10px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    删除
+                                  </button>
+                                </div>
+                              ))}
+                              <div style={{
+                                padding: '8px 12px',
+                                borderTop: '1px solid #f3f4f6'
+                              }}>
+                                <button
+                                  onClick={() => {
+                                    clearAllPresets();
+                                    setShowPresetManagement(false);
+                                  }}
+                                  style={{
+                                    background: '#f59e0b',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    width: '100%'
+                                  }}
+                                >
+                                  清空预设
+                                </button>
+                              </div>
+                              <div style={{
+                                padding: '4px 12px',
+                                textAlign: 'center'
+                              }}>
+                                <button
+                                  onClick={exitPresetManagement}
+                                  style={{
+                                    background: '#6b7280',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '2px 8px',
+                                    fontSize: '10px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  关闭
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value === 'export-json') {
+                            exportPresetsToJSON();
+                          } else if (e.target.value === 'import-json') {
+                            document.getElementById('import-json-input')?.click();
+                          } else if (e.target.value === 'save-png') {
+                            saveWatermarkAsPNG();
+                          }
+                          e.target.value = '';
+                        }}
+                        style={{
+                          height: '28px',
+                          padding: '0 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          background: '#f9fafb',
+                          color: '#374151',
+                          minWidth: '100px',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 8px center',
+                          backgroundSize: '12px 12px',
+                          paddingRight: '28px',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="">更多操作</option>
+                        {presets.length > 0 && (
+                          <option value="export-json">导出JSON</option>
+                        )}
+                        <option value="import-json">导入JSON</option>
+                        {watermarkConfig.type === 'text' && (
+                          <option value="save-png">保存PNG</option>
+                        )}
+                      </select>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={importPresetsFromJSON}
+                        style={{ display: 'none' }}
+                        id="import-json-input"
+                      />
+                    </div>
+                  </div>
                   
                   {/* 预设水印样式 */}
                   <div style={{ marginBottom: isMobile ? '20px' : '24px' }}>
@@ -1617,6 +2066,93 @@ const App: React.FC = () => {
 
       </Content>
       
+      {/* 保存预设模态框 */}
+      {showPresetModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            padding: '24px',
+            borderRadius: '12px',
+            minWidth: '300px',
+            maxWidth: '90vw'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              color: '#1a365d',
+              fontSize: '18px'
+            }}>保存水印预设</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                color: '#1a365d',
+                fontWeight: '500'
+              }}>
+                预设名称:
+              </label>
+              <input
+                type="text"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="请输入预设名称"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    saveCurrentAsPreset();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              justifyContent: 'flex-end' 
+            }}>
+              <Button
+                onClick={() => {
+                  setShowPresetModal(false);
+                  setPresetName('');
+                }}
+                style={{
+                  background: '#f0f0f0',
+                  color: '#666',
+                  border: '1px solid #ddd'
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={saveCurrentAsPreset}
+                style={{
+                  background: '#3b82f6',
+                  color: '#fff',
+                  border: 'none'
+                }}
+              >
+                保存
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </Layout>
   );
