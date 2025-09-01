@@ -37,6 +37,7 @@ const App: React.FC = () => {
 
   const [processedImages, setProcessedImages] = useState<ImageFile[]>([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   
   // 确保currentPreviewIndex在有效范围内
   useEffect(() => {
@@ -44,6 +45,18 @@ const App: React.FC = () => {
       setCurrentPreviewIndex(0);
     }
   }, [images.length, currentPreviewIndex]);
+
+  // 检测屏幕尺寸变化
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
 
 
@@ -68,6 +81,8 @@ const App: React.FC = () => {
     setCurrentPreviewIndex(0); // 重置预览索引
     console.log('设置新图片数组完成');
   }, [images]);
+
+
 
 
 
@@ -405,32 +420,47 @@ const App: React.FC = () => {
               <div className="step-text">配置水印</div>
             </div>
             
-            {/* 左右分栏布局 */}
+            {/* 响应式布局 */}
             <div style={{ 
               display: 'flex', 
-              gap: '24px', 
+              gap: isMobile ? '16px' : '24px', 
               alignItems: 'flex-start',
-              marginTop: '20px'
+              marginTop: '20px',
+              flexDirection: isMobile ? 'column' : 'row'
             }}>
               {/* 左侧：水印配置区域 */}
               <div style={{ flex: '1', minWidth: '0' }}>
                 {/* 水印设置面板 */}
                 <div style={{ 
                   background: '#fff', 
-                  padding: '24px', 
+                  padding: isMobile ? '16px' : '24px', 
                   borderRadius: '12px',
                   border: '1px solid #3b82f6',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
-                  marginBottom: '24px'
+                  marginBottom: isMobile ? '16px' : '24px'
                 }}>
-                  <h3 style={{ color: '#1a365d', marginBottom: '20px', fontSize: '18px' }}>水印设置</h3>
+                  <h3 style={{ 
+                    color: '#1a365d', 
+                    marginBottom: isMobile ? '16px' : '20px', 
+                    fontSize: isMobile ? '16px' : '18px' 
+                  }}>水印设置</h3>
                   
                   {/* 预设水印样式 */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
+                  <div style={{ marginBottom: isMobile ? '20px' : '24px' }}>
+                    <label style={{ 
+                      display: 'block', 
+                      marginBottom: isMobile ? '10px' : '12px', 
+                      color: '#1a365d', 
+                      fontWeight: '500',
+                      fontSize: isMobile ? '14px' : '16px'
+                    }}>
                       预设样式:
                     </label>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: isMobile ? '6px' : '8px', 
+                      flexWrap: 'wrap' 
+                    }}>
                       <Button
                         size="small"
                         onClick={() => setWatermarkConfig({
@@ -704,11 +734,6 @@ const App: React.FC = () => {
                               fontSize: '14px'
                             }}
                           >
-                            <option value="Roboto">Roboto</option>
-                            <option value="Open Sans">Open Sans</option>
-                            <option value="Lato">Lato</option>
-                            <option value="Source Sans Pro">Source Sans Pro</option>
-                            <option value="Noto Sans SC">Noto Sans SC</option>
                             <option value="SourceHanSansCN">思源黑体</option>
                             <option value="SmileySans">得意黑</option>
                             <option value="HuiWenMingChao">汇文明朝体</option>
@@ -1159,7 +1184,6 @@ const App: React.FC = () => {
 
 
 
-
               </div>
 
               {/* 右侧：预览和结果区域 */}
@@ -1167,20 +1191,30 @@ const App: React.FC = () => {
                 {/* 输出设置和处理按钮 */}
                 <div style={{ 
                   background: '#fff', 
-                  padding: '24px', 
+                  padding: isMobile ? '16px' : '24px', 
                   borderRadius: '12px',
                   border: '1px solid #3b82f6',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1)',
-                  marginBottom: '20px'
+                  marginBottom: isMobile ? '16px' : '20px'
                 }}>
                   <div className="step-indicator">
                     <div className="step-number">3</div>
                     <div className="step-text">输出设置</div>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: isMobile ? '12px' : '20px', 
+                    marginBottom: isMobile ? '16px' : '20px',
+                    flexDirection: isMobile ? 'column' : 'row'
+                  }}>
                     <div style={{ flex: '1' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: isMobile ? '6px' : '8px', 
+                        color: '#1a365d', 
+                        fontSize: isMobile ? '13px' : '14px' 
+                      }}>
                         图片质量:
                       </label>
                       <select
@@ -1188,10 +1222,10 @@ const App: React.FC = () => {
                         onChange={(e) => setOutputConfig(prev => ({ ...prev, quality: parseFloat(e.target.value) }))}
                         style={{
                           width: '100%',
-                          padding: '12px 40px 12px 16px',
+                          padding: isMobile ? '10px 35px 10px 12px' : '12px 40px 12px 16px',
                           border: '1px solid #3b82f6',
                           borderRadius: '8px',
-                          fontSize: '14px',
+                          fontSize: isMobile ? '13px' : '14px',
                           appearance: 'none',
                           backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b82f6' d='M4.427 6.427a.6.6 0 0 1 .848 0L8 9.152l2.725-2.725a.6.6 0 0 1 .848.848l-3.15 3.15a.6.6 0 0 1-.848 0l-3.15-3.15a.6.6 0 0 1 0-.848z'/%3E%3C/svg%3E")`,
                           backgroundRepeat: 'no-repeat',
@@ -1211,6 +1245,16 @@ const App: React.FC = () => {
                     <div style={{ flex: '1' }}>
                       <label style={{ display: 'block', marginBottom: '8px', color: '#1a365d', fontSize: '14px' }}>
                         缩放比例:
+                        {images.length > 0 && images[currentPreviewIndex] && images[currentPreviewIndex].width && images[currentPreviewIndex].height && (
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: '#666', 
+                            fontWeight: 'normal',
+                            marginLeft: '8px'
+                          }}>
+                            ({Math.round(images[currentPreviewIndex].width * (outputConfig.scale || 1))} × {Math.round(images[currentPreviewIndex].height * (outputConfig.scale || 1))})
+                          </span>
+                        )}
                       </label>
                       <select
                         value={outputConfig.scale}
@@ -1538,6 +1582,8 @@ const App: React.FC = () => {
         {/* 处理进度 */}
 
       </Content>
+      
+
     </Layout>
   );
 };
