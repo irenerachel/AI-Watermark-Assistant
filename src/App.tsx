@@ -467,7 +467,7 @@ const App: React.FC = () => {
     // 文本自动换行 - 与WatermarkProcessor保持一致
     const wrapText = (text: string): string[] => {
       if (!text) return [];
-      // 每8个字符换一行，与后端逻辑保持一致
+      // 每12个字符换一行，与后端逻辑保持一致
       const chars = Array.from(text);
       const lines: string[] = [];
       let currentLine = '';
@@ -475,8 +475,8 @@ const App: React.FC = () => {
       for (let i = 0; i < chars.length; i++) {
         currentLine += chars[i];
         
-        // 每8个字符换一行，或者到达文本末尾
-        if (currentLine.length >= 8 || i === chars.length - 1) {
+        // 每12个字符换一行，或者到达文本末尾
+        if (currentLine.length >= 12 || i === chars.length - 1) {
           lines.push(currentLine);
           currentLine = '';
         }
@@ -1191,11 +1191,11 @@ const App: React.FC = () => {
                           value={watermarkConfig.text || ''}
                           onChange={(e) => {
                             const text = e.target.value;
-                            if (text.length <= 40) {
+                            if (text.length <= 50) {
                               setWatermarkConfig(prev => ({ ...prev, text }));
                             }
                           }}
-                          maxLength={40}
+                          maxLength={50}
                           style={{
                             width: '100%',
                             padding: '12px 16px',
@@ -1203,7 +1203,7 @@ const App: React.FC = () => {
                             borderRadius: '8px',
                             fontSize: '14px'
                           }}
-                          placeholder="输入水印文字（最多40字）"
+                          placeholder="输入水印文字（最多50字）"
                         />
                         <div style={{ 
                           fontSize: '12px', 
@@ -1211,7 +1211,7 @@ const App: React.FC = () => {
                           marginTop: '4px',
                           textAlign: 'right'
                         }}>
-                          {watermarkConfig.text ? watermarkConfig.text.length : 0}/40
+                          {watermarkConfig.text ? watermarkConfig.text.length : 0}/50
                         </div>
                       </div>
 

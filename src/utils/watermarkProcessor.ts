@@ -147,9 +147,9 @@ export class WatermarkProcessor {
     }
 
     // 检查字数限制
-    if (watermarkConfig.text.length > 40) {
-      console.log('水印文本超过40字限制，截取前40字');
-      watermarkConfig.text = watermarkConfig.text.substring(0, 40);
+    if (watermarkConfig.text.length > 50) {
+      console.log('水印文本超过50字限制，截取前50字');
+      watermarkConfig.text = watermarkConfig.text.substring(0, 50);
     }
 
     console.log('开始添加文字水印:', watermarkConfig.text, 'scale:', scale);
@@ -275,7 +275,7 @@ export class WatermarkProcessor {
       return [text];
     }
     
-    // 简单的字符数换行：每8个字符换一行
+        // 简单的字符数换行：每12个字符换一行
     const chars = Array.from(text);
     const lines: string[] = [];
     let currentLine = '';
@@ -283,12 +283,12 @@ export class WatermarkProcessor {
     for (let i = 0; i < chars.length; i++) {
       currentLine += chars[i];
       
-      // 每8个字符换一行，或者到达文本末尾
-      if (currentLine.length >= 8 || i === chars.length - 1) {
-        lines.push(currentLine);
-        currentLine = '';
-      }
-    }
+      // 每12个字符换一行，或者到达文本末尾
+      if (currentLine.length >= 12 || i === chars.length - 1) {
+         lines.push(currentLine);
+         currentLine = '';
+       }
+     }
     
     console.log('换行结果:', { lines, lineCount: lines.length });
     return lines;
