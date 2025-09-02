@@ -451,11 +451,30 @@ const App: React.FC = () => {
     const previewScale = displaySize.width / imageSize.width;
     
     // 计算Canvas中的实际尺寸
-    const canvasFontSize = (watermarkConfig.fontSize || 24) * outputScale;
+    let canvasFontSize = (watermarkConfig.fontSize || 24) * outputScale;
     const canvasPadding = 9.33 * outputScale; // 6 + 3.33pt (增加更多左右边距，让文字不局促)
     const canvasBorderRadius = 6 * outputScale;
     const canvasBorderWidth = (watermarkConfig.borderWidth || 2) * outputScale;
     const canvasMargin = (watermarkConfig.margin || 15) * outputScale;
+    
+    // 自适应字体大小 - 模拟后端的自适应逻辑
+    const maxTextWidth = Math.min(imageSize.width * 0.8, 800);
+    const testFontSize = (fontSize: number) => {
+      // 创建一个临时的canvas来测试文字宽度
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+        const textWidth = tempCtx.measureText(watermarkConfig.text || '').width;
+        return textWidth <= maxTextWidth;
+      }
+      return true;
+    };
+    
+    // 如果字体太大，逐步减小直到合适
+    while (canvasFontSize > 12 * outputScale && !testFontSize(canvasFontSize)) {
+      canvasFontSize -= 2 * outputScale;
+    }
     
     // 在预览中按比例缩放
     const previewFontSize = canvasFontSize * previewScale;

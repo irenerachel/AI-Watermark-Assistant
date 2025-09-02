@@ -164,22 +164,43 @@ export class WatermarkProcessor {
     this.ctx.font = `${fontSize}px ${watermarkConfig.font || 'Roboto'}`;
     this.ctx.textBaseline = 'top';
 
-    // 计算最大文本宽度（根据图片尺寸自适应）
+    // 自适应字体大小 - 根据图片尺寸和文字长度调整
+    let adaptiveFontSize = fontSize;
     const maxTextWidth = Math.min(imageWidth * 0.8, 800); // 最大宽度为图片宽度的80%，但不超过800px
-    const lineHeight = fontSize * 1.2; // 行高为字体大小的1.2倍
+    
+    // 计算文字实际宽度，如果超出则逐步减小字体
+    const testFontSize = () => {
+      this.ctx.font = `${adaptiveFontSize}px ${watermarkConfig.font || 'Roboto'}`;
+      const textWidth = this.ctx.measureText(watermarkConfig.text || '').width;
+      return textWidth <= maxTextWidth;
+    };
+    
+    // 如果字体太大，逐步减小直到合适
+    while (adaptiveFontSize > 12 && !testFontSize()) {
+      adaptiveFontSize -= 2;
+    }
+    
+    // 如果单行文字仍然太长，则启用换行
+    const lineHeight = adaptiveFontSize * 1.2; // 行高为字体大小的1.2倍
+    const lines = this.wrapText(watermarkConfig.text, maxTextWidth);
+    const totalTextHeight = lines.length * lineHeight;
+    
+    console.log('字体自适应结果:', { 
+      originalFontSize: fontSize, 
+      adaptiveFontSize, 
+      textWidth: this.ctx.measureText(watermarkConfig.text).width,
+      maxTextWidth,
+      lines: lines.length
+    });
 
     console.log('水印文字处理:', {
       text: watermarkConfig.text,
       imageWidth,
       imageHeight,
       maxTextWidth,
-      fontSize,
+      fontSize: adaptiveFontSize,
       lineHeight
     });
-
-    // 文本自动换行
-    const lines = this.wrapText(watermarkConfig.text, maxTextWidth);
-    const totalTextHeight = lines.length * lineHeight;
 
     console.log('换行结果:', {
       lines,
@@ -241,6 +262,7 @@ export class WatermarkProcessor {
 
     // 绘制多行文本
     this.ctx.fillStyle = watermarkConfig.color || '#ffffff';
+    this.ctx.font = `${adaptiveFontSize}px ${watermarkConfig.font || 'Roboto'}`;
     lines.forEach((line: string, index: number) => {
       const lineY = y + (index * lineHeight);
       this.ctx.fillText(line, x, lineY);
