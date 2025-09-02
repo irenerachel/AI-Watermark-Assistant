@@ -1155,7 +1155,13 @@ const App: React.FC = () => {
                         <input
                           type="text"
                           value={watermarkConfig.text || ''}
-                          onChange={(e) => setWatermarkConfig(prev => ({ ...prev, text: e.target.value }))}
+                          onChange={(e) => {
+                            const text = e.target.value;
+                            if (text.length <= 40) {
+                              setWatermarkConfig(prev => ({ ...prev, text }));
+                            }
+                          }}
+                          maxLength={40}
                           style={{
                             width: '100%',
                             padding: '12px 16px',
@@ -1163,8 +1169,16 @@ const App: React.FC = () => {
                             borderRadius: '8px',
                             fontSize: '14px'
                           }}
-                          placeholder="输入水印文字"
+                          placeholder="输入水印文字（最多40字）"
                         />
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#6b7280', 
+                          marginTop: '4px',
+                          textAlign: 'right'
+                        }}>
+                          {watermarkConfig.text ? watermarkConfig.text.length : 0}/40
+                        </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>

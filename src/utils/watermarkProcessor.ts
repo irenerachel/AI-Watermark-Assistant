@@ -146,6 +146,12 @@ export class WatermarkProcessor {
       return;
     }
 
+    // 检查字数限制
+    if (watermarkConfig.text.length > 40) {
+      console.log('水印文本超过40字限制，截取前40字');
+      watermarkConfig.text = watermarkConfig.text.substring(0, 40);
+    }
+
     console.log('开始添加文字水印:', watermarkConfig.text, 'scale:', scale);
 
     // 使用用户设置的字体大小，按scale缩放
