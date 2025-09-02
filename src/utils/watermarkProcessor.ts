@@ -162,9 +162,24 @@ export class WatermarkProcessor {
     const maxTextWidth = Math.min(imageWidth * 0.8, 800); // 最大宽度为图片宽度的80%，但不超过800px
     const lineHeight = fontSize * 1.2; // 行高为字体大小的1.2倍
 
+    console.log('水印文字处理:', {
+      text: watermarkConfig.text,
+      imageWidth,
+      imageHeight,
+      maxTextWidth,
+      fontSize,
+      lineHeight
+    });
+
     // 文本自动换行
     const lines = this.wrapText(watermarkConfig.text, maxTextWidth);
     const totalTextHeight = lines.length * lineHeight;
+
+    console.log('换行结果:', {
+      lines,
+      totalTextHeight,
+      lineCount: lines.length
+    });
 
     // 计算水印位置（按scale缩放边距）
     const { x, y } = this.calculateWatermarkPosition(
@@ -176,6 +191,18 @@ export class WatermarkProcessor {
       scale,
       watermarkConfig.margin || 15
     );
+
+    console.log('水印位置计算:', {
+      position: watermarkConfig.position,
+      x,
+      y,
+      maxTextWidth,
+      totalTextHeight,
+      imageWidth,
+      imageHeight,
+      scale,
+      margin: watermarkConfig.margin || 15
+    });
 
     // 根据borderStyle绘制不同的效果（按scale缩放padding/边框）
     const padding = Math.round(9.33 * (scale || 1)); // 6 + 3.33pt (增加更多左右边距，让文字不局促)
@@ -233,17 +260,19 @@ export class WatermarkProcessor {
 
   // 文本自动换行方法
   private wrapText(text: string, maxWidth: number): string[] {
-    const words = text.split('');
     const lines: string[] = [];
     let currentLine = '';
-
-    for (let i = 0; i < words.length; i++) {
-      const testLine = currentLine + words[i];
+    
+    // 按字符分割，支持中文
+    const chars = Array.from(text);
+    
+    for (let i = 0; i < chars.length; i++) {
+      const testLine = currentLine + chars[i];
       const metrics = this.ctx.measureText(testLine);
       
       if (metrics.width > maxWidth && currentLine !== '') {
         lines.push(currentLine);
-        currentLine = words[i];
+        currentLine = chars[i];
       } else {
         currentLine = testLine;
       }
@@ -252,7 +281,13 @@ export class WatermarkProcessor {
     if (currentLine) {
       lines.push(currentLine);
     }
-
+    
+    // 如果没有换行，返回原文本
+    if (lines.length === 0) {
+      lines.push(text);
+    }
+    
+    console.log('文本换行结果:', { text, maxWidth, lines, lineCount: lines.length });
     return lines;
   }
 
