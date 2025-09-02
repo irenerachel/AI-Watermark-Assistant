@@ -464,6 +464,27 @@ const App: React.FC = () => {
     const previewBorderWidth = canvasBorderWidth * previewScale;
     const previewMargin = canvasMargin * previewScale;
 
+    // 文本自动换行 - 与WatermarkProcessor保持一致
+    const wrapText = (text: string): string[] => {
+      if (!text) return [];
+      // 每8个字符换一行，与后端逻辑保持一致
+      const chars = Array.from(text);
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      for (let i = 0; i < chars.length; i++) {
+        currentLine += chars[i];
+        
+        // 每8个字符换一行，或者到达文本末尾
+        if (currentLine.length >= 8 || i === chars.length - 1) {
+          lines.push(currentLine);
+          currentLine = '';
+        }
+      }
+      
+      return lines;
+    };
+
     // 计算位置 - 完全模拟Canvas的位置计算
     const getPosition = () => {
       const margin = previewMargin;
@@ -481,6 +502,11 @@ const App: React.FC = () => {
       }
     };
 
+    // 计算多行文本的总高度
+    const lines = wrapText(watermarkConfig.text || '');
+    const lineHeight = previewFontSize * 1.2; // 行高为字体大小的1.2倍
+    const totalTextHeight = lines.length * lineHeight;
+
     return (
       <div
         style={{
@@ -491,10 +517,14 @@ const App: React.FC = () => {
           fontSize: `${previewFontSize}px`,
           fontFamily: watermarkConfig.font || 'SourceHanSansCN',
           color: watermarkConfig.color || '#ffffff',
-          lineHeight: '1',
-          whiteSpace: 'nowrap',
+          lineHeight: `${lineHeight}px`,
+          whiteSpace: 'pre-line',
           pointerEvents: 'none',
           zIndex: 10,
+          minHeight: watermarkConfig.borderStyle === 'none' ? 'auto' : `${totalTextHeight + previewPadding * 2}px`,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
           ...(watermarkConfig.borderStyle === 'none' && {
             background: 'transparent',
             border: 'none'
@@ -510,7 +540,11 @@ const App: React.FC = () => {
           filter: 'none'
         }}
       >
-        {watermarkConfig.text}
+        {lines.map((line, index) => (
+          <div key={index} style={{ textAlign: 'center' }}>
+            {line}
+          </div>
+        ))}
       </div>
     );
   };
