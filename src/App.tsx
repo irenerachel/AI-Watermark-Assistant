@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   
-  // 水印预设管理
+  // 水印预设管理 - 确保功能同步
   const [presets, setPresets] = useState<Array<{id: string, name: string, config: WatermarkConfigType}>>([]);
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [presetName, setPresetName] = useState('');

@@ -158,16 +158,19 @@ export class WatermarkProcessor {
     this.ctx.font = `${fontSize}px ${watermarkConfig.font || 'Roboto'}`;
     this.ctx.textBaseline = 'top';
 
-    // 计算文本尺寸
-    const textMetrics = this.ctx.measureText(watermarkConfig.text);
-    const textWidth = textMetrics.width;
-    const textHeight = fontSize;
+    // 计算最大文本宽度（根据图片尺寸自适应）
+    const maxTextWidth = Math.min(imageWidth * 0.8, 800); // 最大宽度为图片宽度的80%，但不超过800px
+    const lineHeight = fontSize * 1.2; // 行高为字体大小的1.2倍
+
+    // 文本自动换行
+    const lines = this.wrapText(watermarkConfig.text, maxTextWidth);
+    const totalTextHeight = lines.length * lineHeight;
 
     // 计算水印位置（按scale缩放边距）
     const { x, y } = this.calculateWatermarkPosition(
       watermarkConfig.position,
-      textWidth,
-      textHeight,
+      maxTextWidth,
+      totalTextHeight,
       imageWidth,
       imageHeight,
       scale,
@@ -178,8 +181,8 @@ export class WatermarkProcessor {
     const padding = Math.round(9.33 * (scale || 1)); // 6 + 3.33pt (增加更多左右边距，让文字不局促)
     const rectX = x - padding;
     const rectY = y - padding;
-    const rectWidth = textWidth + padding * 2;
-    const rectHeight = textHeight + padding * 2;
+    const rectWidth = maxTextWidth + padding * 2;
+    const rectHeight = totalTextHeight + padding * 2;
     const borderRadius = Math.round(6 * (scale || 1));
 
     if (watermarkConfig.borderStyle === 'outline') {
@@ -203,11 +206,14 @@ export class WatermarkProcessor {
       }
     }
 
-    // 绘制文本
+    // 绘制多行文本
     this.ctx.fillStyle = watermarkConfig.color || '#ffffff';
-    this.ctx.fillText(watermarkConfig.text, x, y);
+    lines.forEach((line: string, index: number) => {
+      const lineY = y + (index * lineHeight);
+      this.ctx.fillText(line, x, lineY);
+    });
     
-    console.log('文字水印绘制完成:', watermarkConfig.text, '位置:', x, y);
+    console.log('文字水印绘制完成:', watermarkConfig.text, '位置:', x, y, '行数:', lines.length);
   }
 
   // 绘制圆角矩形的辅助方法
@@ -223,6 +229,31 @@ export class WatermarkProcessor {
     this.ctx.lineTo(x, y + radius);
     this.ctx.quadraticCurveTo(x, y, x + radius, y);
     this.ctx.closePath();
+  }
+
+  // 文本自动换行方法
+  private wrapText(text: string, maxWidth: number): string[] {
+    const words = text.split('');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = currentLine + words[i];
+      const metrics = this.ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine !== '') {
+        lines.push(currentLine);
+        currentLine = words[i];
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines;
   }
 
   private async addImageWatermark(
