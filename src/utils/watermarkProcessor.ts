@@ -258,79 +258,33 @@ export class WatermarkProcessor {
     this.ctx.closePath();
   }
 
-  // 文本自动换行方法
+  // 文本自动换行方法 - 简化版本
   private wrapText(text: string, maxWidth: number): string[] {
+    console.log('开始换行处理:', { text, maxWidth });
+    
+    // 如果文本宽度小于最大宽度，直接返回
+    const textWidth = this.ctx.measureText(text).width;
+    if (textWidth <= maxWidth) {
+      console.log('文本宽度未超过最大宽度，无需换行');
+      return [text];
+    }
+    
+    // 简单的字符数换行：每8个字符换一行
+    const chars = Array.from(text);
     const lines: string[] = [];
     let currentLine = '';
     
-    // 按字符分割，支持中文
-    const chars = Array.from(text);
-    
-    console.log('开始换行处理:', { text, maxWidth, charsLength: chars.length });
-    
     for (let i = 0; i < chars.length; i++) {
-      const char = chars[i];
-      const testLine = currentLine + char;
-      const metrics = this.ctx.measureText(testLine);
+      currentLine += chars[i];
       
-      console.log(`字符 ${i}: "${char}", 当前行: "${currentLine}", 测试行: "${testLine}", 宽度: ${metrics.width}, 最大宽度: ${maxWidth}`);
-      
-      if (metrics.width > maxWidth && currentLine !== '') {
-        console.log(`换行: "${currentLine}" -> 宽度: ${this.ctx.measureText(currentLine).width}`);
-        lines.push(currentLine);
-        currentLine = char;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    
-    // 添加最后一行
-    if (currentLine) {
-      console.log(`最后一行: "${currentLine}" -> 宽度: ${this.ctx.measureText(currentLine).width}`);
-      lines.push(currentLine);
-    }
-    
-    // 如果没有换行，返回原文本
-    if (lines.length === 0) {
-      lines.push(text);
-    }
-    
-    console.log('文本换行结果:', { text, maxWidth, lines, lineCount: lines.length });
-    
-    // 强制测试：如果文本确实很长，强制换行
-    if (lines.length === 1 && this.ctx.measureText(text).width > maxWidth) {
-      console.log('强制换行：文本宽度超过最大宽度，进行强制换行');
-      return this.forceWrapText(text, maxWidth);
-    }
-    
-    return lines;
-  }
-
-  // 强制换行方法（当正常换行失败时使用）
-  private forceWrapText(text: string, maxWidth: number): string[] {
-    const lines: string[] = [];
-    const chars = Array.from(text);
-    let currentLine = '';
-    
-    console.log('开始强制换行:', { text, maxWidth });
-    
-    for (let i = 0; i < chars.length; i++) {
-      const char = chars[i];
-      currentLine += char;
-      
-      // 每10个字符强制换行一次，或者当达到最大宽度时换行
-      if (currentLine.length >= 10 || this.ctx.measureText(currentLine).width > maxWidth) {
+      // 每8个字符换一行，或者到达文本末尾
+      if (currentLine.length >= 8 || i === chars.length - 1) {
         lines.push(currentLine);
         currentLine = '';
       }
     }
     
-    // 添加剩余内容
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-    
-    console.log('强制换行结果:', { lines, lineCount: lines.length });
+    console.log('换行结果:', { lines, lineCount: lines.length });
     return lines;
   }
 
