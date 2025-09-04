@@ -261,12 +261,15 @@ export class WatermarkProcessor {
     }
 
     // 绘制多行文本
+    this.ctx.save();
+    this.ctx.globalAlpha = (watermarkConfig.textOpacity || 100) / 100;
     this.ctx.fillStyle = watermarkConfig.color || '#ffffff';
     this.ctx.font = `${adaptiveFontSize}px ${watermarkConfig.font || 'Roboto'}`;
     lines.forEach((line: string, index: number) => {
       const lineY = y + (index * lineHeight);
       this.ctx.fillText(line, x, lineY);
     });
+    this.ctx.restore();
     
     console.log('文字水印绘制完成:', watermarkConfig.text, '位置:', x, y, '行数:', lines.length);
   }
@@ -393,9 +396,11 @@ export class WatermarkProcessor {
 
           console.log(`水印 ${index + 1} 位置:`, x, y, '位置类型:', watermarkConfig.position);
 
-          // 绘制水印（保持PNG透明背景）
-          this.ctx.globalAlpha = 1; // 保持完全不透明，让PNG的透明部分自然显示
+          // 绘制水印（应用透明度设置）
+          this.ctx.save();
+          this.ctx.globalAlpha = (watermarkConfig.imageOpacity || 100) / 100;
           this.ctx.drawImage(watermarkImg, x, y, watermarkWidth, watermarkHeight);
+          this.ctx.restore();
 
           console.log(`图片水印 ${index + 1} 绘制完成`);
           resolve();

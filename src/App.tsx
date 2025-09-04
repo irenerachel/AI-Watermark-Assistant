@@ -16,6 +16,7 @@ const App: React.FC = () => {
     font: 'SourceHanSansCN',
     fontSize: 24,
     color: '#ffffff',
+    textOpacity: 100,
     backgroundColor: '#000000',
     backgroundOpacity: 80,
     borderStyle: 'solid',
@@ -23,7 +24,8 @@ const App: React.FC = () => {
     borderWidth: 2,
     borderOpacity: 100,
     position: 'top-left',
-    margin: 15
+    margin: 15,
+    imageOpacity: 100
   });
 
   const [outputConfig, setOutputConfig] = useState<OutputConfigType>({
@@ -235,11 +237,14 @@ const App: React.FC = () => {
         ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvas.width - borderWidth, canvas.height - borderWidth);
         
         // 绘制文字
+        ctx.save();
+        ctx.globalAlpha = (watermarkConfig.textOpacity || 100) / 100;
         ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
         ctx.fillStyle = watermarkConfig.color || '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
       } else if (watermarkConfig.borderStyle === 'solid') {
         // 实心模式：绘制背景和文字
         const bgColor = watermarkConfig.backgroundColor || '#000000';
@@ -250,18 +255,24 @@ const App: React.FC = () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // 绘制文字
+        ctx.save();
+        ctx.globalAlpha = (watermarkConfig.textOpacity || 100) / 100;
         ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
         ctx.fillStyle = watermarkConfig.color || '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
       } else {
         // 无边框模式：只绘制文字
+        ctx.save();
+        ctx.globalAlpha = (watermarkConfig.textOpacity || 100) / 100;
         ctx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
         ctx.fillStyle = watermarkConfig.color || '#ffffff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
       }
 
       // 导出为PNG
@@ -416,6 +427,118 @@ const App: React.FC = () => {
     return `rgba(${r}, ${g}, ${b}, ${a})`;
   };
 
+  // 计算建议的水印尺寸
+  const calculateWatermarkSize = (imageWidth: number, imageHeight: number) => {
+    if (!imageWidth || !imageHeight) return null;
+    
+    // 计算图片总面积
+    const totalImageArea = imageWidth * imageHeight;
+    
+    // 0.3%最小面积
+    const minArea = totalImageArea * 0.003;
+    
+    // 假设水印宽高比为7.43:1（参考示例）
+    const aspectRatio = 7.43;
+    
+    // 计算最小高度
+    const calculatedMinHeight = Math.sqrt(minArea / aspectRatio);
+    
+    // 实际最小高度（最低20px）
+    const actualMinHeight = Math.max(calculatedMinHeight, 20);
+    
+    // 对应宽度
+    const correspondingWidth = actualMinHeight * aspectRatio;
+    
+    return {
+      width: Math.round(correspondingWidth),
+      height: Math.round(actualMinHeight)
+    };
+  };
+
+  // 检查当前水印尺寸是否符合0.3%要求
+  const checkWatermarkCompliance = () => {
+    if (images.length > 0 && currentPreviewIndex >= 0) {
+      const currentImage = images[currentPreviewIndex];
+      if (currentImage.width && currentImage.height) {
+        const currentSize = getCurrentWatermarkSize();
+        if (currentSize) {
+          // 计算建议的水印尺寸作为参考
+          const suggestedSize = calculateWatermarkSize(currentImage.width, currentImage.height);
+          if (suggestedSize) {
+            // 检查宽度或高度是否有一个符合要求（允许±20%的误差）
+            const widthRatio = currentSize.width / suggestedSize.width;
+            const heightRatio = currentSize.height / suggestedSize.height;
+            
+            // 调试信息（可选）
+            console.log(`图片 ${currentPreviewIndex + 1} (${currentImage.width}×${currentImage.height}): 当前${currentSize.width}×${currentSize.height}, 建议${suggestedSize.width}×${suggestedSize.height}, 宽度比例${widthRatio.toFixed(2)}, 高度比例${heightRatio.toFixed(2)}`);
+            
+            // 宽度或高度有一个在0.8-1.2范围内就认为符合要求
+            return (widthRatio >= 0.8 && widthRatio <= 1.2) || (heightRatio >= 0.8 && heightRatio <= 1.2);
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  // 计算当前水印的实际尺寸
+  const getCurrentWatermarkSize = () => {
+    if (watermarkConfig.type === 'text') {
+      // 文字水印尺寸计算
+      const fontSize = watermarkConfig.fontSize || 24;
+      const text = watermarkConfig.text || 'AI生成';
+      const padding = 18.66; // 9.33 * 2 (左右padding)
+      
+      // 创建临时canvas来测量文字宽度
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.font = `${fontSize}px ${watermarkConfig.font || 'SourceHanSansCN'}`;
+        const textWidth = tempCtx.measureText(text).width;
+        
+        // 计算多行文字的高度
+        const lineHeight = fontSize * 1.2;
+        const lines = Math.ceil(text.length / 12); // 每12个字符一行
+        const textHeight = lines * lineHeight;
+        
+        return {
+          width: Math.round(textWidth + padding),
+          height: Math.round(textHeight + padding)
+        };
+      }
+    } else if (watermarkConfig.type === 'image') {
+      // 图片水印尺寸计算 - 需要基于当前图片尺寸
+      if (images.length > 0 && currentPreviewIndex >= 0) {
+        const currentImage = images[currentPreviewIndex];
+        if (currentImage.width && currentImage.height) {
+          const imageWidth = currentImage.width;
+          const imageHeight = currentImage.height;
+          const shortSide = Math.min(imageWidth, imageHeight);
+          const maxWatermarkSize = shortSide * 0.15; // 最大15%的短边
+          
+          // 假设水印图片是正方形（常见情况），如果不是正方形会有偏差
+          const baseWatermarkSize = Math.min(maxWatermarkSize, 200); // 限制最大200px
+          const sizeMultiplier = watermarkConfig.watermarkSize || 1.0;
+          const finalSize = baseWatermarkSize * sizeMultiplier;
+          
+          return {
+            width: Math.round(finalSize),
+            height: Math.round(finalSize) // 假设正方形水印
+          };
+        }
+      }
+      
+      // 如果没有当前图片，使用默认值
+      const defaultSize = 120;
+      const sizeMultiplier = watermarkConfig.watermarkSize || 1.0;
+      return {
+        width: Math.round(defaultSize * sizeMultiplier),
+        height: Math.round(defaultSize * sizeMultiplier)
+      };
+    }
+    return null;
+  };
+
   // 水印预览覆盖层组件 - 完全模拟Canvas绘制逻辑
   const WatermarkPreviewOverlay = ({ watermarkConfig, outputConfig, imageElement }: {
     watermarkConfig: WatermarkConfigType;
@@ -536,6 +659,7 @@ const App: React.FC = () => {
           fontSize: `${previewFontSize}px`,
           fontFamily: watermarkConfig.font || 'SourceHanSansCN',
           color: watermarkConfig.color || '#ffffff',
+          opacity: (watermarkConfig.textOpacity || 100) / 100,
           lineHeight: `${lineHeight}px`,
           whiteSpace: 'pre-line',
           pointerEvents: 'none',
@@ -970,6 +1094,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#ffffff',
+                          textOpacity: 100,
                           backgroundColor: '#000000',
                           backgroundOpacity: 90,
                           borderStyle: 'solid',
@@ -993,6 +1118,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#000000',
+                          textOpacity: 100,
                           backgroundColor: '#ffffff',
                           backgroundOpacity: 100,
                           borderStyle: 'solid',
@@ -1016,6 +1142,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#ffffff',
+                          textOpacity: 100,
                           backgroundColor: '#3b82f6',
                           backgroundOpacity: 90,
                           borderStyle: 'solid',
@@ -1039,6 +1166,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#000000',
+                          textOpacity: 100,
                           backgroundColor: '#fbbf24',
                           backgroundOpacity: 90,
                           borderStyle: 'solid',
@@ -1062,6 +1190,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#ffffff',
+                          textOpacity: 100,
                           backgroundColor: '#ffffff',
                           backgroundOpacity: 100,
                           borderStyle: 'outline',
@@ -1085,6 +1214,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#000000',
+                          textOpacity: 100,
                           backgroundColor: 'transparent',
                           backgroundOpacity: 0,
                           borderStyle: 'outline',
@@ -1108,6 +1238,7 @@ const App: React.FC = () => {
                           type: 'text',
                           text: 'AI生成',
                           color: '#000000',
+                          textOpacity: 100,
                           backgroundColor: 'transparent',
                           backgroundOpacity: 0,
                           borderStyle: 'none',
@@ -1287,8 +1418,56 @@ const App: React.FC = () => {
 
                       <div style={{ marginBottom: '20px' }}>
                         <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
-                          字体大小: {watermarkConfig.fontSize || 24}px
+                          文字透明度: {watermarkConfig.textOpacity || 100}%
                         </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={watermarkConfig.textOpacity || 100}
+                          onChange={(e) => setWatermarkConfig(prev => ({ ...prev, textOpacity: parseInt(e.target.value) }))}
+                          style={{
+                            width: '100%',
+                            height: '6px',
+                            background: '#3b82f6',
+                            borderRadius: '3px',
+                            outline: 'none'
+                          }}
+                        />
+                        <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
+                          <span style={{ position: 'absolute', left: '0%' }}>0%</span>
+                          <span style={{ position: 'absolute', left: '25%', transform: 'translateX(-50%)' }}>25%</span>
+                          <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>50%</span>
+                          <span style={{ position: 'absolute', left: '75%', transform: 'translateX(-50%)' }}>75%</span>
+                          <span style={{ position: 'absolute', right: '0%' }}>100%</span>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <label style={{ color: '#1a365d', fontWeight: '500' }}>
+                            字体大小: {watermarkConfig.fontSize || 24}px
+                          </label>
+                          {(() => {
+                            const currentSize = getCurrentWatermarkSize();
+                            if (currentSize) {
+                              return (
+                                <div style={{ 
+                                  fontSize: '12px', 
+                                  color: '#1e40af',
+                                  fontWeight: '500',
+                                  padding: '4px 8px',
+                                  background: '#f0f9ff',
+                                  border: '1px solid #3b82f6',
+                                  borderRadius: '4px'
+                                }}>
+                                  📐 {currentSize.width}×{currentSize.height}px
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                         <input
                           type="range"
                           min="8"
@@ -1622,9 +1801,30 @@ const App: React.FC = () => {
                   {/* 水印大小设置 - 仅图片水印 */}
                   {watermarkConfig.type === 'image' && (
                     <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
-                        水印大小: {Math.round((watermarkConfig.watermarkSize || 1.0) * 100)}%
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <label style={{ color: '#1a365d', fontWeight: '500' }}>
+                          水印大小: {Math.round((watermarkConfig.watermarkSize || 1.0) * 100)}%
+                        </label>
+                        {(() => {
+                          const currentSize = getCurrentWatermarkSize();
+                          if (currentSize) {
+                            return (
+                              <div style={{ 
+                                fontSize: '12px', 
+                                color: '#1e40af',
+                                fontWeight: '500',
+                                padding: '4px 8px',
+                                background: '#f0f9ff',
+                                border: '1px solid #3b82f6',
+                                borderRadius: '4px'
+                              }}>
+                                📐 {currentSize.width}×{currentSize.height}px
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                       <input
                         type="range"
                         min="0.3"
@@ -1650,6 +1850,37 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* 图片水印透明度设置 - 仅图片水印 */}
+                  {watermarkConfig.type === 'image' && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', marginBottom: '12px', color: '#1a365d', fontWeight: '500' }}>
+                        图片透明度: {watermarkConfig.imageOpacity || 100}%
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={watermarkConfig.imageOpacity || 100}
+                        onChange={(e) => setWatermarkConfig(prev => ({ ...prev, imageOpacity: parseInt(e.target.value) }))}
+                        style={{
+                          width: '100%',
+                          height: '6px',
+                          background: '#3b82f6',
+                          borderRadius: '3px',
+                          outline: 'none'
+                        }}
+                      />
+                      <div style={{ position: 'relative', fontSize: '12px', color: '#666', marginTop: '4px', height: '16px' }}>
+                        <span style={{ position: 'absolute', left: '0%' }}>0%</span>
+                        <span style={{ position: 'absolute', left: '25%', transform: 'translateX(-50%)' }}>25%</span>
+                        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>50%</span>
+                        <span style={{ position: 'absolute', left: '75%', transform: 'translateX(-50%)' }}>75%</span>
+                        <span style={{ position: 'absolute', right: '0%' }}>100%</span>
+                      </div>
+                    </div>
+                  )}
+
 
                   {/* 水印边距设置 - 文字和图片水印共用 */}
                   <div style={{ marginBottom: '20px' }}>
@@ -2085,6 +2316,7 @@ const App: React.FC = () => {
                                   pointerEvents: 'none',
                                   background: 'transparent',
                                   imageRendering: 'auto',
+                                  opacity: (watermarkConfig.imageOpacity || 100) / 100,
                                   zIndex: 10
                                 }}
                               />
@@ -2104,6 +2336,63 @@ const App: React.FC = () => {
                       }}>
                         <div>文件名: {images[currentPreviewIndex]?.name}</div>
                         <div>尺寸: {images[currentPreviewIndex]?.width} × {images[currentPreviewIndex]?.height}</div>
+                        {(() => {
+                          const currentImage = images[currentPreviewIndex];
+                          if (currentImage?.width && currentImage?.height) {
+                            const watermarkSize = calculateWatermarkSize(currentImage.width, currentImage.height);
+                            if (watermarkSize) {
+                              return (
+                                <div style={{ 
+                                  color: '#059669', 
+                                  marginTop: '4px',
+                                  padding: '4px 6px',
+                                  background: '#f0fdf4',
+                                  borderRadius: '4px',
+                                  border: '1px solid #bbf7d0'
+                                }}>
+                                  📏 建议水印尺寸: <strong>{watermarkSize.width}×{watermarkSize.height}px</strong> (符合0.3%要求)
+                                </div>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
+                        
+                        {/* 当前水印尺寸符合要求提醒 */}
+                        {(() => {
+                          const currentSize = getCurrentWatermarkSize();
+                          if (currentSize) {
+                            const isCompliant = checkWatermarkCompliance();
+                            if (isCompliant) {
+                              return (
+                                <div style={{ 
+                                  color: '#059669', 
+                                  marginTop: '4px',
+                                  padding: '4px 6px',
+                                  background: '#f0fdf4',
+                                  borderRadius: '4px',
+                                  border: '1px solid #bbf7d0'
+                                }}>
+                                  ✅ 当前水印尺寸 <strong>{currentSize.width}×{currentSize.height}px</strong> 符合0.3%要求
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div style={{ 
+                                  color: '#dc2626', 
+                                  marginTop: '4px',
+                                  padding: '4px 6px',
+                                  background: '#fef2f2',
+                                  borderRadius: '4px',
+                                  border: '1px solid #fecaca'
+                                }}>
+                                  ⚠️ 当前水印尺寸 <strong>{currentSize.width}×{currentSize.height}px</strong> 不符合0.3%要求
+                                </div>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
                         {images.length > 1 && (
                           <div style={{ color: '#3b82f6', marginTop: '4px' }}>
                             💡 多图预览：使用上方按钮切换查看不同图片的水印效果

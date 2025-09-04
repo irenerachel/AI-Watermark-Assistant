@@ -4,6 +4,7 @@ export interface WatermarkConfig {
   font?: string;
   fontSize?: number;
   color?: string;
+  textOpacity?: number;
   backgroundColor?: string;
   backgroundOpacity?: number;
   borderStyle: 'none' | 'solid' | 'outline';
@@ -16,6 +17,7 @@ export interface WatermarkConfig {
   selectedWatermarkIndex?: number;
   margin?: number;
   watermarkSize?: number;
+  imageOpacity?: number;
 }
 
 export interface ImageFile {
