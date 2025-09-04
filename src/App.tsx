@@ -79,6 +79,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // 组件加载时自动加载配置
+  useEffect(() => {
+    loadConfigFromStorage();
+  }, []);
+
+  // 配置变化时自动保存
+  useEffect(() => {
+    // 延迟保存，避免频繁保存
+    const saveTimer = setTimeout(() => {
+      saveConfigToStorage();
+    }, 1000);
+    
+    return () => clearTimeout(saveTimer);
+  }, [watermarkConfig, outputConfig]);
+
   // 保存预设到localStorage
   const savePresetsToStorage = (newPresets: Array<{id: string, name: string, config: WatermarkConfigType}>) => {
     try {
@@ -453,6 +468,63 @@ const App: React.FC = () => {
       width: Math.round(correspondingWidth),
       height: Math.round(actualMinHeight)
     };
+  };
+
+  // 保存配置到localStorage
+  const saveConfigToStorage = () => {
+    try {
+      const configData = {
+        watermarkConfig,
+        outputConfig,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('aiWatermarkConfig', JSON.stringify(configData));
+      console.log('配置已保存到浏览器缓存');
+    } catch (error) {
+      console.error('保存配置失败:', error);
+    }
+  };
+
+  // 从localStorage加载配置
+  const loadConfigFromStorage = () => {
+    try {
+      const savedConfig = localStorage.getItem('aiWatermarkConfig');
+      if (savedConfig) {
+        const configData = JSON.parse(savedConfig);
+        
+        // 检查配置是否过期（7天）
+        const isExpired = Date.now() - configData.timestamp > 7 * 24 * 60 * 60 * 1000;
+        if (isExpired) {
+          localStorage.removeItem('aiWatermarkConfig');
+          console.log('配置已过期，已清除');
+          return;
+        }
+
+        // 恢复水印配置
+        if (configData.watermarkConfig) {
+          setWatermarkConfig(configData.watermarkConfig);
+        }
+        
+        // 恢复输出配置
+        if (configData.outputConfig) {
+          setOutputConfig(configData.outputConfig);
+        }
+        
+        console.log('配置已从浏览器缓存加载');
+      }
+    } catch (error) {
+      console.error('加载配置失败:', error);
+    }
+  };
+
+  // 清除配置缓存
+  const clearConfigStorage = () => {
+    try {
+      localStorage.removeItem('aiWatermarkConfig');
+      console.log('配置缓存已清除');
+    } catch (error) {
+      console.error('清除配置失败:', error);
+    }
   };
 
   // 检查当前水印尺寸是否符合0.3%要求
@@ -844,39 +916,63 @@ const App: React.FC = () => {
                 }}>
                   <div style={{ 
                     display: 'flex', 
-                    justifyContent: 'space-between', 
                     alignItems: 'center', 
                     marginBottom: isMobile ? '16px' : '20px' 
                   }}>
-                    <h3 style={{ 
-                      color: '#1a365d', 
-                      fontSize: isMobile ? '16px' : '18px',
-                      margin: 0
-                    }}>水印设置</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ 
+                        color: '#1a365d', 
+                        fontSize: isMobile ? '16px' : '18px',
+                        margin: 0
+                      }}>水印设置</h3>
+                      
+                      {/* 自动保存状态指示器 */}
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        fontSize: '11px',
+                        color: '#10b981',
+                        background: '#f0fdf4',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        border: '1px solid #bbf7d0'
+                      }}>
+                        <div style={{ 
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          background: '#10b981'
+                        }}></div>
+                        <span>自动保存</span>
+                      </div>
+                    </div>
+                    
                     <div style={{ 
                       display: 'flex', 
                       gap: '10px', 
                       flexWrap: 'wrap',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      marginLeft: 'auto'
                     }}>
-                      <Button
-                        size="small"
-                        onClick={() => setShowPresetModal(true)}
-                        style={{ 
-                          background: '#3b82f6', 
-                          color: '#fff',
-                          border: 'none',
-                          height: '28px',
-                          padding: '0 12px',
-                          fontSize: '12px',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        保存预设
-                      </Button>
+                        <Button
+                          size="small"
+                          onClick={() => setShowPresetModal(true)}
+                          style={{ 
+                            background: '#3b82f6', 
+                            color: '#fff',
+                            border: 'none',
+                            height: '28px',
+                            padding: '0 12px',
+                            fontSize: '12px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          保存预设
+                        </Button>
                       {presets.length > 0 && (
                         <div style={{ position: 'relative' }}>
                           <select
@@ -1023,7 +1119,13 @@ const App: React.FC = () => {
                       )}
                       <select
                         onChange={(e) => {
-                          if (e.target.value === 'export-json') {
+                          if (e.target.value === 'save-config') {
+                            saveConfigToStorage();
+                            message.success('配置已保存到浏览器缓存');
+                          } else if (e.target.value === 'clear-config') {
+                            clearConfigStorage();
+                            message.success('配置缓存已清除');
+                          } else if (e.target.value === 'export-json') {
                             exportPresetsToJSON();
                           } else if (e.target.value === 'import-json') {
                             document.getElementById('import-json-input')?.click();
@@ -1053,6 +1155,9 @@ const App: React.FC = () => {
                         defaultValue=""
                       >
                         <option value="">更多操作</option>
+                        <option value="save-config">💾 保存配置到缓存</option>
+                        <option value="clear-config">🗑️ 清除配置缓存</option>
+                        <option value="---">────────────</option>
                         {presets.length > 0 && (
                           <option value="export-json">导出JSON</option>
                         )}
@@ -1070,6 +1175,7 @@ const App: React.FC = () => {
                       />
                     </div>
                   </div>
+                  
                   
                   {/* 预设水印样式 */}
                   <div style={{ marginBottom: isMobile ? '20px' : '24px' }}>
